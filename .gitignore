@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.dist/
+.cache/
+.parcel-cache/
+*.log
+.DS_Store
+.idea/
+.vscode/
+coverage/
+.env
+.env.*
+!.env.example
+*.zip
+*.crx
+.auth/
