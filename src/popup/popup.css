@@ -5,8 +5,10 @@
   --bg: #fff;
   --fg: #1a1a1a;
   --muted: #666;
-  --accent: #0a7e8c;
+  --accent: #165ddc;
   --accent-fg: #fff;
+  --accent-soft: rgba(22, 93, 220, 0.12);
+  --highlight: #ff6029;
   --error: #b3261e;
   --success: #1f8a4c;
   --border: #d0d0d0;
@@ -15,10 +17,12 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #1f1f1f;
+    --bg: #161821;
     --fg: #f3f3f3;
     --muted: #a8a8a8;
-    --border: #3a3a3a;
+    --accent: #4a85ec;
+    --accent-soft: rgba(74, 133, 236, 0.2);
+    --border: #2c2f3a;
   }
 }
 
@@ -31,6 +35,30 @@ body {
 
 main {
   padding: 12px 14px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.brand-mark {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+}
+
+.head .brand-mark {
+  width: 22px;
+  height: 22px;
 }
 
 .hidden {
@@ -56,7 +84,7 @@ main {
 }
 
 .mode.existing {
-  color: var(--success);
+  color: var(--highlight);
 }
 
 .origin {
@@ -140,7 +168,7 @@ main {
 
 .suggestions li[aria-selected='true'],
 .suggestions li:hover {
-  background: rgba(10, 126, 140, 0.12);
+  background: var(--accent-soft);
 }
 
 .suggestions .count {
