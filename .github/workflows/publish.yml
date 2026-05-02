@@ -15,18 +15,37 @@ name: Publish to Chrome Web Store
 
 on:
     release:
-        types: [created]
+        types: [created, published]
+    push:
+        tags:
+            - 'v*'
+    workflow_dispatch:
+        inputs:
+            tag:
+                description: 'Release tag to publish (e.g. v0.1.0)'
+                required: true
+                type: string
 
 jobs:
     publish:
-        if: github.event.release.prerelease == false
+        if: ${{ github.event_name != 'release' || github.event.release.prerelease == false }}
         runs-on: ubuntu-latest
         permissions:
             contents: read
         steps:
+            - name: Resolve tag
+              id: tag
+              run: |
+                  if [ -n "${{ github.event.inputs.tag }}" ]; then
+                      echo "name=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+                  elif [ -n "${{ github.event.release.tag_name }}" ]; then
+                      echo "name=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
+                  else
+                      echo "name=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+                  fi
             - uses: actions/checkout@v4
               with:
-                  ref: ${{ github.event.release.tag_name }}
+                  ref: ${{ steps.tag.outputs.name }}
             - uses: actions/setup-node@v4
               with:
                   node-version: '22'
