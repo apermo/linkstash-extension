@@ -12,8 +12,13 @@ in the [v0.1.0 milestone](https://github.com/apermo/linkstash-extension/mileston
 
 ## What you'll need
 
-- A WordPress site running the LinkStash plugin (≥ v0.1.0).
+- A WordPress site running the LinkStash plugin (≥ v0.1.0), with the
+  plugin **activated**.
 - A LinkStash API token, generated from **Tools → LinkStash** in WP-Admin.
+- WordPress permalinks set to anything **other than "Plain"**
+  (`Settings → Permalinks`). The extension talks to
+  `https://your-site/wp-json/linkstash/v1/…`, which 404s on the Plain
+  permalink scheme.
 
 ## Configuration
 
@@ -26,6 +31,18 @@ Once installed, open the extension's options page and provide:
 The extension requests host permission for the URL you supply, scoped to
 that origin only. No data leaves the extension except the calls to your
 LinkStash REST API.
+
+### Sanity check
+
+If **Test connection** reports "Endpoint not found", verify the WP REST
+API is reachable by visiting these URLs in your browser:
+
+- `https://your-site/wp-json/` — should return a JSON listing of REST
+  namespaces. If it returns the WordPress homepage, fix the permalink
+  setting.
+- `https://your-site/wp-json/linkstash/v1/tags?q=` — should return JSON
+  (`[]` is fine). If it returns `{"code":"rest_no_route"}`, the LinkStash
+  plugin isn't activated on that install.
 
 ## Architecture (MV3)
 
