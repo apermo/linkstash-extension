@@ -7,9 +7,44 @@
     <link rel="stylesheet" href="./options.css" />
   </head>
   <body>
-    <main id="root">
+    <main>
       <h1>LinkStash</h1>
-      <p class="placeholder">Options form lands in #10.</p>
+      <p class="lead">
+        Connect this extension to your LinkStash WordPress install. Generate a token from
+        <strong>Tools → LinkStash</strong> in WP-Admin.
+      </p>
+      <form id="settings-form" novalidate>
+        <label class="field">
+          <span>LinkStash host</span>
+          <input
+            type="url"
+            id="host"
+            name="host"
+            placeholder="https://bookmarks.example.tld"
+            autocomplete="url"
+            required
+          />
+          <small class="hint">Must be HTTPS. The extension asks Chrome for access to this origin only.</small>
+        </label>
+        <label class="field">
+          <span>API token</span>
+          <input type="password" id="token" name="token" autocomplete="off" spellcheck="false" required />
+        </label>
+        <fieldset class="field">
+          <legend>Default visibility for new bookmarks</legend>
+          <label class="radio">
+            <input type="radio" name="visibility" value="private" checked /> Private
+          </label>
+          <label class="radio">
+            <input type="radio" name="visibility" value="public" /> Public
+          </label>
+        </fieldset>
+        <div class="actions">
+          <button type="submit" id="save">Save</button>
+          <button type="button" id="test">Test connection</button>
+        </div>
+        <p class="status" id="status" role="status" aria-live="polite"></p>
+      </form>
     </main>
     <script type="module" src="./index.ts"></script>
   </body>

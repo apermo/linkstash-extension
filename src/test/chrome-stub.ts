@@ -52,7 +52,7 @@ const makeArea = (
   };
 
   const remove: StorageArea['remove'] = (keys) => {
-    const list = Array.isArray(keys) ? keys : [keys];
+    const list: string[] = Array.isArray(keys) ? (keys as string[]) : [keys as string];
     const changes: { [k: string]: StorageChange } = {};
     for (const k of list) {
       if (k in store) {
