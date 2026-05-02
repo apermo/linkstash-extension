@@ -33,3 +33,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Service worker: tab-change listener calls `client.check` (debounced
   500 ms) and updates the action badge with a green ✓ when the page
   is already saved.
+- Tag autocomplete in the popup: debounced `client.tags(prefix)` with
+  keyboard (ArrowUp/Down/Enter/Escape) and click selection.
+- Right-click context menu **Save link to LinkStash** — adds the link
+  via `client.create` without opening the popup; surfaces success and
+  errors via `chrome.notifications`.
+- CI: a `Lint, test, build` job runs on every PR, uploads `dist/` as
+  a 14-day artifact. A separate `Release Asset` workflow packages
+  `dist/` into a versioned zip and attaches it to each GitHub Release.

@@ -5,10 +5,16 @@ WordPress bookmark plugin. Save the current tab to your LinkStash with one
 click, see at a glance which pages you've already saved, and edit
 title/description/tags/visibility without leaving the page.
 
-## Status
+## Install
 
-Pre-MVP. The repo is bootstrapping; tracked work for the first release is
-in the [v0.1.0 milestone](https://github.com/apermo/linkstash-extension/milestone/1).
+Until a Chrome Web Store listing exists, load the extension unpacked:
+
+1. Grab the latest `linkstash-extension-vX.Y.Z.zip` from
+   [Releases](https://github.com/apermo/linkstash-extension/releases) and
+   unzip it, **or** clone this repo and run `npm install && npm run build`
+   to produce a fresh `dist/` directory.
+2. Open `chrome://extensions`, enable **Developer mode**.
+3. Click **Load unpacked** and pick the unzipped folder (or `dist/`).
 
 ## What you'll need
 
@@ -58,11 +64,35 @@ API is reachable by visiting these URLs in your browser:
 The detailed implementation plan lives in
 [`docs/plan.md`](docs/plan.md).
 
+## Usage
+
+- **Click the action icon** on any tab to open the popup. New pages get a
+  Save form (title pulled from the tab); already-saved pages open in
+  Update mode prefilled from the API, with a Delete button.
+- **Tag autocomplete** fires after you've typed a character; arrow keys
+  navigate, Enter or click selects.
+- **Right-click any link** and pick **Save link to LinkStash** to save
+  without opening the popup. The selection text becomes the title when
+  present.
+- **The action badge** shows a green ✓ on tabs whose URL is already in
+  your LinkStash. The check runs whenever you switch or load a tab.
+
 ## Development
 
-See [`docs/plan.md`](docs/plan.md) for the chosen tech stack (TypeScript,
-Vite + `@crxjs/vite-plugin`, Vitest) and the build pipeline; once the
-repo bootstrap issue lands, this section will document the local setup.
+```bash
+npm install
+npm run dev       # Vite dev server with extension HMR
+npm run build     # production build to dist/
+npm run lint
+npm run lint:fix
+npm run test
+npm run test:watch
+```
+
+Stack: TypeScript (strict) + Vite + `@crxjs/vite-plugin`, Vitest with
+`fetch` and `chrome.*` stubbed at the boundary, ESLint flat config +
+Prettier. See [`docs/plan.md`](docs/plan.md) for the rationale and
+[`CLAUDE.md`](CLAUDE.md) for the conventions.
 
 ## License
 
