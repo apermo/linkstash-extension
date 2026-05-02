@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-05-02
+
+### Fixed
+
+- Release workflows (`release-asset.yml`, `publish.yml`) now also
+  listen on tag push and `workflow_dispatch`. The reusable release
+  job runs under `GITHUB_TOKEN`, which doesn't fire downstream
+  workflows; this widens the trigger so the next tag self-attaches
+  the build artefact and self-publishes to the Chrome Web Store.
+
+### Changed
+
+- `codecov/codecov-action` bumped from v4 to v5; the upload now
+  passes the repository slug explicitly.
+
 ## [0.1.0] - 2026-05-02
 
 Initial public release.

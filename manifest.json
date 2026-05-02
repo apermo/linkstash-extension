@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "LinkStash",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Save the current tab to your LinkStash WordPress install with one click.",
   "minimum_chrome_version": "116",
   "action": {
