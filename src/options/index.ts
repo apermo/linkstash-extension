@@ -120,7 +120,7 @@ const onTest = async () => {
           : result.reason === 'notFound'
             ? 'Endpoint not found — is the LinkStash plugin active?'
             : result.reason === 'network'
-              ? 'Network error — check the host URL.'
+              ? `Network error — ${result.message || 'check the host URL'}.`
               : `Server error: ${result.message}`;
       setStatus(reason, 'error');
     }

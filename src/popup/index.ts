@@ -27,6 +27,7 @@ const elements = {
   save: $<HTMLButtonElement>('#save'),
   delete: $<HTMLButtonElement>('#delete'),
   openOptions: $<HTMLButtonElement>('#open-options'),
+  openOptionsLink: $<HTMLButtonElement>('#open-options-link'),
   grant: $<HTMLButtonElement>('#grant'),
 };
 
@@ -205,9 +206,9 @@ const onDelete = async () => {
   }
 };
 
-elements.openOptions.addEventListener('click', () => {
-  void chrome.runtime.openOptionsPage();
-});
+const openOptions = () => void chrome.runtime.openOptionsPage();
+elements.openOptions.addEventListener('click', openOptions);
+elements.openOptionsLink.addEventListener('click', openOptions);
 
 elements.grant.addEventListener('click', () => {
   void (async () => {
