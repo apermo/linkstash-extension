@@ -19,7 +19,8 @@ Until a Chrome Web Store listing exists, load the extension unpacked:
 ## What you'll need
 
 - A WordPress site running the LinkStash plugin (≥ v0.1.0), with the
-  plugin **activated**.
+  plugin **activated**. Install via Composer:
+  [`apermo/linkstash`](https://packagist.org/packages/apermo/linkstash).
 - A LinkStash API token, generated from **Tools → LinkStash** in WP-Admin.
 - WordPress permalinks set to anything **other than "Plain"**
   (`Settings → Permalinks`). The extension talks to
@@ -93,6 +94,11 @@ Stack: TypeScript (strict) + Vite + `@crxjs/vite-plugin`, Vitest with
 `fetch` and `chrome.*` stubbed at the boundary, ESLint flat config +
 Prettier. See [`docs/plan.md`](docs/plan.md) for the rationale and
 [`CLAUDE.md`](CLAUDE.md) for the conventions.
+
+## Feedback
+
+Bugs, feature ideas, and questions belong on the
+[issue tracker](https://github.com/apermo/linkstash-extension/issues).
 
 ## License
 

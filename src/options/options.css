@@ -131,3 +131,16 @@ button:disabled {
 .status.success {
   color: var(--success);
 }
+
+.footer {
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.footer a,
+.lead a {
+  color: var(--accent);
+}

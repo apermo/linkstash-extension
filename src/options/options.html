@@ -10,8 +10,10 @@
     <main>
       <h1>LinkStash</h1>
       <p class="lead">
-        Connect this extension to your LinkStash WordPress install. Generate a token from
-        <strong>Tools → LinkStash</strong> in WP-Admin.
+        Connect this extension to your LinkStash WordPress install. Install the plugin via
+        <a href="https://packagist.org/packages/apermo/linkstash" target="_blank" rel="noopener noreferrer"
+          ><code>apermo/linkstash</code> on Packagist</a
+        >, then generate a token from <strong>Tools → LinkStash</strong> in WP-Admin.
       </p>
       <form id="settings-form" novalidate>
         <label class="field">
@@ -45,6 +47,15 @@
         </div>
         <p class="status" id="status" role="status" aria-live="polite"></p>
       </form>
+      <footer class="footer">
+        Found a bug or have feedback? Open an issue on
+        <a
+          href="https://github.com/apermo/linkstash-extension/issues"
+          target="_blank"
+          rel="noopener noreferrer"
+          >github.com/apermo/linkstash-extension</a
+        >.
+      </footer>
     </main>
     <script type="module" src="./index.ts"></script>
   </body>
