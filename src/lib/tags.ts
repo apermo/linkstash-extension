@@ -30,13 +30,3 @@ export const replaceToken = (value: string, ctx: TokenContext, replacement: stri
   const rest = trailing === '' ? ', ' : trailing;
   return `${before}${replacement}${rest}`;
 };
-
-export const newCaretAfterReplace = (
-  ctx: TokenContext,
-  replacement: string,
-  prevValueLen: number,
-  nextValue: string,
-): number => {
-  const inserted = replacement.length + (nextValue.length - prevValueLen + (ctx.end - ctx.start));
-  return Math.min(ctx.start + inserted, nextValue.length);
-};

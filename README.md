@@ -1,5 +1,8 @@
 # LinkStash Browser Extension
 
+[![CI](https://github.com/apermo/linkstash-extension/actions/workflows/ci.yml/badge.svg)](https://github.com/apermo/linkstash-extension/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/apermo/linkstash-extension/graph/badge.svg)](https://codecov.io/gh/apermo/linkstash-extension)
+
 A Chrome MV3 extension for the [LinkStash](https://github.com/apermo/linkstash)
 WordPress bookmark plugin. Save the current tab to your LinkStash with one
 click, see at a glance which pages you've already saved, and edit
