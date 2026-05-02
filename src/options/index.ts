@@ -98,6 +98,10 @@ const onTest = async () => {
     setStatus('Fill in host and token before testing.', 'error');
     return;
   }
+  if (!/^https:\/\//i.test(next.host)) {
+    setStatus('Host must be a full https:// URL.', 'error');
+    return;
+  }
   testBtn.disabled = true;
   setStatus('Testing…');
   try {
@@ -120,6 +124,8 @@ const onTest = async () => {
               : `Server error: ${result.message}`;
       setStatus(reason, 'error');
     }
+  } catch (e) {
+    setStatus(e instanceof Error ? e.message : String(e), 'error');
   } finally {
     testBtn.disabled = false;
   }

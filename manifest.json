@@ -17,6 +17,7 @@
     "type": "module"
   },
   "permissions": ["storage", "activeTab"],
+  "optional_host_permissions": ["https://*/*"],
   "icons": {
     "16": "src/assets/icon-16.png",
     "32": "src/assets/icon-32.png",

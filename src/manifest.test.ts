@@ -11,6 +11,10 @@ describe('manifest', () => {
     expect(manifest).not.toHaveProperty('host_permissions');
   });
 
+  it('declares optional host permissions so chrome.permissions.request is allowed at runtime', () => {
+    expect(manifest.optional_host_permissions).toEqual(['https://*/*']);
+  });
+
   it('points the action and options page at popup/options entry HTML', () => {
     expect(manifest.action.default_popup).toBe('src/popup/popup.html');
     expect(manifest.options_ui.page).toBe('src/options/options.html');
