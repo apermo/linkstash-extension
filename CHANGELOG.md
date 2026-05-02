@@ -10,3 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Initial repo scaffold (README, CHANGELOG, LICENSE, plan).
+- TypeScript + Vite + `@crxjs/vite-plugin` build toolchain with MV3
+  `manifest.json`, ESLint flat config, Prettier, and Vitest. Stub
+  popup, options, and service-worker entry points build green and load
+  as an unpacked extension from `dist/`.
