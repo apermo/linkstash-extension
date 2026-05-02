@@ -57,8 +57,9 @@ main {
 }
 
 .head .brand-mark {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
+  padding: 2px;
 }
 
 .hidden {
@@ -71,9 +72,19 @@ main {
 
 .head {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 8px;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.head-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.head-top .mode {
+  flex: 1;
 }
 
 .mode {
@@ -88,10 +99,9 @@ main {
 }
 
 .origin {
+  display: block;
   color: var(--muted);
-  font-size: 12px;
-  flex: 1;
-  margin: 0 8px;
+  font-size: 11px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
