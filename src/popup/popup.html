@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LinkStash</title>
+    <link rel="stylesheet" href="./popup.css" />
+  </head>
+  <body>
+    <main id="root">
+      <div id="loading" class="state">Loading…</div>
+
+      <section id="needs-config" class="state hidden">
+        <header class="brand">
+          <img src="../assets/logo.svg" alt="" class="brand-mark" />
+          <h1>LinkStash</h1>
+        </header>
+        <p>Configure your LinkStash host and token first.</p>
+        <button type="button" id="open-options">Open options</button>
+      </section>
+
+      <section id="needs-permission" class="state hidden">
+        <header class="brand">
+          <img src="../assets/logo.svg" alt="" class="brand-mark" />
+          <h1>LinkStash</h1>
+        </header>
+        <p>Grant access to your LinkStash host to continue.</p>
+        <button type="button" id="grant">Grant access</button>
+      </section>
+
+      <form id="bookmark-form" class="state hidden" novalidate>
+        <header class="head">
+          <div class="head-top">
+            <img src="../assets/logo.svg" alt="" class="brand-mark" />
+            <span id="mode-label" class="mode">New</span>
+            <button type="button" id="open-options-link" class="icon-btn" title="Open options" aria-label="Open options">⚙</button>
+          </div>
+          <span id="origin" class="origin"></span>
+        </header>
+
+        <label class="field">
+          <span>Title</span>
+          <input type="text" id="title" name="title" autocomplete="off" />
+        </label>
+
+        <label class="field">
+          <span>Description</span>
+          <textarea id="description" name="description" rows="3"></textarea>
+        </label>
+
+        <label class="field tags-field">
+          <span>Tags</span>
+          <input
+            type="text"
+            id="tags"
+            name="tags"
+            autocomplete="off"
+            placeholder="comma, separated, list"
+            aria-autocomplete="list"
+            aria-controls="tag-suggestions"
+          />
+          <ul id="tag-suggestions" class="suggestions hidden" role="listbox"></ul>
+        </label>
+
+        <label class="checkbox">
+          <input type="checkbox" id="is-public" name="is-public" />
+          <span>Public</span>
+        </label>
+
+        <p id="status" class="status" role="status" aria-live="polite"></p>
+
+        <div class="actions">
+          <button type="submit" id="save">Save</button>
+          <button type="button" id="delete" class="danger hidden">Delete</button>
+        </div>
+      </form>
+    </main>
+    <script type="module" src="./index.ts"></script>
+  </body>
+</html>

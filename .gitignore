@@ -14,3 +14,5 @@ coverage/
 *.zip
 *.crx
 .auth/
+*.tsbuildinfo
+releases/
