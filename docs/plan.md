@@ -134,17 +134,32 @@ Tag autocomplete: on every input keystroke (debounced 200 ms), call
 - On tag `v*`: package `dist/` into a `linkstash-extension-vX.Y.Z.zip`,
   attach to a GitHub Release.
 
+## Context-menu entry (v0.1.0)
+
+A right-click context-menu item — "Save link to LinkStash" — registered
+via `chrome.contextMenus.create({ contexts: ['link'] })` in the service
+worker. Clicking it pulls the link's `href` and (when present) the
+selection text or anchor text as a fallback title, then calls
+`client.create()` directly without opening the popup. Errors surface as a
+`chrome.notifications.create()` toast. Idempotent dedupe is the API's
+problem, not ours; a re-save just merges into the existing record.
+
+The host-permission request flow on the options page must include the
+extension's own origin in `host_permissions` for the context menu to
+fire on cross-origin links — alternatively the menu uses the granted
+origin from settings as the gate (don't show the menu until a host is
+configured).
+
 ## Out of scope for v0.1.0
 
 - Omnibox keyword (`ls<space>`).
-- Right-click context menu "Save link to LinkStash".
 - Bulk import from `chrome.bookmarks`.
 - Firefox / Edge specific manifest tweaks (Firefox requires
   `browser_specific_settings`; addressing in v0.2.0).
 - Offline cache of the user's full bookmark list.
 - Localisation (English-only at MVP).
 
-## v0.1.0 issue list (12)
+## v0.1.0 issue list (13)
 
 1. Repo bootstrap: `package.json`, `tsconfig.json`, Vite + CRXJS config,
    ESLint + Prettier, base `manifest.json`, dummy popup/options/service
@@ -165,11 +180,13 @@ Tag autocomplete: on every input keystroke (debounced 200 ms), call
 10. Options page: three fields, save-to-storage, host-permission request.
 11. Options page: "Test connection" button.
 12. README: install / configure / screenshot. CI workflow.
+13. Right-click context menu "Save link to LinkStash" — `contextMenus.create`
+    with `contexts: ['link']`, fallback title from selection/anchor text,
+    success/error toast via `chrome.notifications`.
 
 ## Backlog (v0.2.0+)
 
 - Omnibox keyword.
-- Context-menu "Save link to LinkStash".
 - Bulk import from `chrome.bookmarks`.
 - Firefox + Edge manifest variants.
 - Keyboard shortcut for save.
