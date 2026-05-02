@@ -3,6 +3,7 @@ import { fallbackTitle } from '../lib/link-title';
 import { readSettings, watchSettings, type Settings } from '../lib/settings';
 
 const MENU_ID_SAVE_LINK = 'linkstash:save-link';
+const MENU_ID_SAVE_PAGE = 'linkstash:save-page';
 
 const DEBOUNCE_MS = 500;
 
@@ -104,6 +105,11 @@ const ensureContextMenu = () => {
       title: 'Save link to LinkStash',
       contexts: ['link'],
     });
+    chrome.contextMenus.create({
+      id: MENU_ID_SAVE_PAGE,
+      title: 'Save page to LinkStash',
+      contexts: ['page', 'selection'],
+    });
   });
 };
 
@@ -116,10 +122,21 @@ const notify = (title: string, message: string) => {
   });
 };
 
-const onContextSave = async (info: chrome.contextMenus.OnClickData) => {
-  if (info.menuItemId !== MENU_ID_SAVE_LINK) return;
-  const url = info.linkUrl;
-  if (!url) return;
+const onContextSave = async (
+  info: chrome.contextMenus.OnClickData,
+  tab: chrome.tabs.Tab | undefined,
+) => {
+  let url: string | undefined;
+  let pageTitle: string | undefined;
+  if (info.menuItemId === MENU_ID_SAVE_LINK) {
+    url = info.linkUrl;
+  } else if (info.menuItemId === MENU_ID_SAVE_PAGE) {
+    url = info.pageUrl ?? tab?.url;
+    pageTitle = tab?.title;
+  } else {
+    return;
+  }
+  if (!url || !/^https?:\/\//i.test(url)) return;
   const settings = await readSettings();
   if (!settings) {
     notify('LinkStash', 'Configure the extension first.');
@@ -135,7 +152,10 @@ const onContextSave = async (info: chrome.contextMenus.OnClickData) => {
   try {
     const result = await client.create({
       url,
-      title: fallbackTitle(url, { selection: info.selectionText }),
+      title:
+        info.menuItemId === MENU_ID_SAVE_PAGE && pageTitle
+          ? pageTitle
+          : fallbackTitle(url, { selection: info.selectionText }),
       public: settings.defaultVisibility === 'public',
     });
     notify(
@@ -148,8 +168,8 @@ const onContextSave = async (info: chrome.contextMenus.OnClickData) => {
   }
 };
 
-chrome.contextMenus.onClicked.addListener((info) => {
-  void onContextSave(info);
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  void onContextSave(info, tab);
 });
 
 chrome.runtime.onInstalled.addListener(() => {
