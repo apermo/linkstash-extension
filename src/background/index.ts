@@ -1,5 +1,8 @@
 import { LinkStashClient, isLinkStashError } from '../lib/api';
+import { fallbackTitle } from '../lib/link-title';
 import { readSettings, watchSettings, type Settings } from '../lib/settings';
+
+const MENU_ID_SAVE_LINK = 'linkstash:save-link';
 
 const DEBOUNCE_MS = 500;
 
@@ -94,10 +97,70 @@ watchSettings(() => {
   });
 });
 
+const ensureContextMenu = () => {
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: MENU_ID_SAVE_LINK,
+      title: 'Save link to LinkStash',
+      contexts: ['link'],
+    });
+  });
+};
+
+const notify = (title: string, message: string) => {
+  void chrome.notifications.create({
+    type: 'basic',
+    iconUrl: chrome.runtime.getURL('src/assets/icon-128.png'),
+    title,
+    message,
+  });
+};
+
+const onContextSave = async (info: chrome.contextMenus.OnClickData) => {
+  if (info.menuItemId !== MENU_ID_SAVE_LINK) return;
+  const url = info.linkUrl;
+  if (!url) return;
+  const settings = await readSettings();
+  if (!settings) {
+    notify('LinkStash', 'Configure the extension first.');
+    void chrome.runtime.openOptionsPage();
+    return;
+  }
+  if (!(await chrome.permissions.contains({ origins: [originPattern(settings.host)] }))) {
+    notify('LinkStash', 'Grant host permission in options first.');
+    void chrome.runtime.openOptionsPage();
+    return;
+  }
+  const client = new LinkStashClient(settings.host, settings.token);
+  try {
+    const result = await client.create({
+      url,
+      title: fallbackTitle(url, { selection: info.selectionText }),
+      public: settings.defaultVisibility === 'public',
+    });
+    notify(
+      result.existing ? 'Updated in LinkStash' : 'Saved to LinkStash',
+      result.bookmark.title || url,
+    );
+  } catch (e) {
+    const message = isLinkStashError(e) ? e.message : e instanceof Error ? e.message : String(e);
+    notify('LinkStash error', message);
+  }
+};
+
+chrome.contextMenus.onClicked.addListener((info) => {
+  void onContextSave(info);
+});
+
 chrome.runtime.onInstalled.addListener(() => {
+  ensureContextMenu();
   void chrome.tabs.query({ active: true }).then((tabs) => {
     for (const tab of tabs) {
       if (tab.id != null) debouncedUpdate(tab.id, tab.url);
     }
   });
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  ensureContextMenu();
 });

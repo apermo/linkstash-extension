@@ -7,7 +7,12 @@ describe('manifest', () => {
   });
 
   it('requests only the install-time permissions the plan documents', () => {
-    expect(manifest.permissions).toEqual(['storage', 'activeTab']);
+    expect(manifest.permissions).toEqual([
+      'storage',
+      'activeTab',
+      'contextMenus',
+      'notifications',
+    ]);
     expect(manifest).not.toHaveProperty('host_permissions');
   });
 
