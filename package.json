@@ -1,7 +1,7 @@
 {
   "name": "linkstash-extension",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Chrome MV3 extension companion for the LinkStash WordPress bookmark plugin.",
   "license": "GPL-2.0-or-later",
   "type": "module",
@@ -13,7 +13,8 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "package": "npm run build && node scripts/package.mjs"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^2.0.0",

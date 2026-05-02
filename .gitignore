@@ -15,3 +15,4 @@ coverage/
 *.crx
 .auth/
 *.tsbuildinfo
+releases/

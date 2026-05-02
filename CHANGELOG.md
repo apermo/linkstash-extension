@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0] - 2026-05-02
 
+Initial public release.
+
 ### Added
 
 - Initial repo scaffold (README, CHANGELOG, LICENSE, plan).
@@ -39,5 +41,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   via `client.create` without opening the popup; surfaces success and
   errors via `chrome.notifications`.
 - CI: a `Lint, test, build` job runs on every PR, uploads `dist/` as
-  a 14-day artifact. A separate `Release Asset` workflow packages
-  `dist/` into a versioned zip and attaches it to each GitHub Release.
+  a 14-day artifact and pushes coverage to Codecov. A separate
+  `Release Asset` workflow packages `dist/` into a versioned zip and
+  attaches it to each GitHub Release.
+- "Save page to LinkStash" context-menu entry alongside "Save link
+  to LinkStash" — saves the active tab when right-clicking the page
+  body or with text selected.
+- `npm run package` builds and zips a Chrome Web Store-ready archive
+  into `releases/linkstash-extension-vX.Y.Z.zip`.
+- `publish.yml` workflow uploads + auto-publishes new releases to
+  the Chrome Web Store via the publish API once the listing exists
+  and the OAuth secrets are configured (see `docs/release.md`).
+- `PRIVACY.md` and `docs/store/listing.md` cover the privacy
+  disclosures, listing copy, and per-permission justifications the
+  Chrome Web Store form requires.
