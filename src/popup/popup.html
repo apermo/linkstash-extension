@@ -37,7 +37,7 @@
           <textarea id="description" name="description" rows="3"></textarea>
         </label>
 
-        <label class="field">
+        <label class="field tags-field">
           <span>Tags</span>
           <input
             type="text"
@@ -45,7 +45,10 @@
             name="tags"
             autocomplete="off"
             placeholder="comma, separated, list"
+            aria-autocomplete="list"
+            aria-controls="tag-suggestions"
           />
+          <ul id="tag-suggestions" class="suggestions hidden" role="listbox"></ul>
         </label>
 
         <label class="checkbox">

@@ -1,5 +1,6 @@
-import { LinkStashClient, isLinkStashError, type Bookmark, type BookmarkInput } from '../lib/api';
+import { LinkStashClient, isLinkStashError, type Bookmark, type BookmarkInput, type Tag } from '../lib/api';
 import { readSettings, type Settings } from '../lib/settings';
+import { currentToken, replaceToken } from '../lib/tags';
 
 type Mode = { kind: 'new'; url: string; title: string } | { kind: 'edit'; bookmark: Bookmark };
 
@@ -29,6 +30,7 @@ const elements = {
   openOptions: $<HTMLButtonElement>('#open-options'),
   openOptionsLink: $<HTMLButtonElement>('#open-options-link'),
   grant: $<HTMLButtonElement>('#grant'),
+  suggestions: $<HTMLUListElement>('#tag-suggestions'),
 };
 
 const showOnly = (state: keyof typeof states) => {
@@ -209,6 +211,106 @@ const onDelete = async () => {
 const openOptions = () => void chrome.runtime.openOptionsPage();
 elements.openOptions.addEventListener('click', openOptions);
 elements.openOptionsLink.addEventListener('click', openOptions);
+
+const SUGGEST_DEBOUNCE_MS = 200;
+let suggestTimer: ReturnType<typeof setTimeout> | null = null;
+let activeSuggestions: Tag[] = [];
+let activeIndex = -1;
+
+const hideSuggestions = () => {
+  elements.suggestions.classList.add('hidden');
+  elements.suggestions.replaceChildren();
+  activeSuggestions = [];
+  activeIndex = -1;
+};
+
+const renderSuggestions = (tags: Tag[]) => {
+  activeSuggestions = tags;
+  activeIndex = -1;
+  elements.suggestions.replaceChildren(
+    ...tags.map((tag, i) => {
+      const li = document.createElement('li');
+      li.setAttribute('role', 'option');
+      li.dataset.index = String(i);
+      const name = document.createElement('span');
+      name.textContent = tag.name || tag.slug;
+      const count = document.createElement('span');
+      count.className = 'count';
+      count.textContent = String(tag.count);
+      li.append(name, count);
+      li.addEventListener('mousedown', (ev) => {
+        ev.preventDefault();
+        applySuggestion(i);
+      });
+      return li;
+    }),
+  );
+  elements.suggestions.classList.toggle('hidden', tags.length === 0);
+};
+
+const setActive = (index: number) => {
+  activeIndex = index;
+  for (const li of elements.suggestions.querySelectorAll<HTMLLIElement>('li')) {
+    li.setAttribute('aria-selected', String(Number(li.dataset.index) === index));
+  }
+};
+
+const applySuggestion = (index: number) => {
+  const tag = activeSuggestions[index];
+  if (!tag) return;
+  const value = elements.tags.value;
+  const caret = elements.tags.selectionStart ?? value.length;
+  const ctx = currentToken(value, caret);
+  const next = replaceToken(value, ctx, tag.slug);
+  elements.tags.value = next;
+  const newCaret = ctx.start + tag.slug.length + 2;
+  elements.tags.setSelectionRange(newCaret, newCaret);
+  hideSuggestions();
+  elements.tags.focus();
+};
+
+const fetchSuggestions = async () => {
+  if (!client) return;
+  const value = elements.tags.value;
+  const caret = elements.tags.selectionStart ?? value.length;
+  const ctx = currentToken(value, caret);
+  if (ctx.prefix.length < 1) {
+    hideSuggestions();
+    return;
+  }
+  try {
+    const tags = await client.tags(ctx.prefix);
+    if (tags.length === 0) hideSuggestions();
+    else renderSuggestions(tags.slice(0, 8));
+  } catch {
+    hideSuggestions();
+  }
+};
+
+elements.tags.addEventListener('input', () => {
+  if (suggestTimer) clearTimeout(suggestTimer);
+  suggestTimer = setTimeout(() => void fetchSuggestions(), SUGGEST_DEBOUNCE_MS);
+});
+
+elements.tags.addEventListener('blur', () => {
+  setTimeout(hideSuggestions, 100);
+});
+
+elements.tags.addEventListener('keydown', (ev) => {
+  if (elements.suggestions.classList.contains('hidden')) return;
+  if (ev.key === 'ArrowDown') {
+    ev.preventDefault();
+    setActive(Math.min(activeIndex + 1, activeSuggestions.length - 1));
+  } else if (ev.key === 'ArrowUp') {
+    ev.preventDefault();
+    setActive(Math.max(activeIndex - 1, 0));
+  } else if (ev.key === 'Enter' && activeIndex >= 0) {
+    ev.preventDefault();
+    applySuggestion(activeIndex);
+  } else if (ev.key === 'Escape') {
+    hideSuggestions();
+  }
+});
 
 elements.grant.addEventListener('click', () => {
   void (async () => {
