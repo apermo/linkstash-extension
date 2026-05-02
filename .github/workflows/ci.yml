@@ -30,11 +30,12 @@ jobs:
             - run: npm run test:coverage
             - run: npm run build
             - name: Upload coverage to Codecov
-              uses: codecov/codecov-action@v4
+              uses: codecov/codecov-action@v5
               with:
                   files: coverage/lcov.info
                   fail_ci_if_error: false
                   token: ${{ secrets.CODECOV_TOKEN }}
+                  slug: ${{ github.repository }}
             - uses: actions/upload-artifact@v4
               with:
                   name: dist
