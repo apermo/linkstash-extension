@@ -159,14 +159,24 @@ export class LinkStashClient {
         e instanceof Error ? e.message : 'Network error',
       );
     }
+    const contentType = res.headers.get('content-type') ?? '';
+    const looksJson = contentType.includes('application/json');
     if (!res.ok) {
-      const body: unknown = await res.json().catch(() => ({}));
+      const body: unknown = looksJson ? await res.json().catch(() => ({})) : {};
       const code = isErrorBody(body) && typeof body.code === 'string' ? body.code : 'http_error';
       const message =
         isErrorBody(body) && typeof body.message === 'string'
           ? body.message
           : `HTTP ${res.status}`;
       throw new LinkStashError(kindFor(res.status), res.status, code, message);
+    }
+    if (!looksJson && init.method !== 'DELETE') {
+      throw new LinkStashError(
+        'notFound',
+        res.status,
+        'not_json',
+        'Server returned a non-JSON response — is the LinkStash plugin active and are pretty permalinks enabled?',
+      );
     }
     return res;
   }
