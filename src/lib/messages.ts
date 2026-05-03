@@ -36,8 +36,26 @@ export type WriteResponse =
   | { ok: true; kind: 'delete' }
   | { ok: false; error: WriteErrorPayload };
 
-export const isWriteEnvelope = (v: unknown): v is WriteEnvelope =>
-  typeof v === 'object' && v !== null && (v as { channel?: unknown }).channel === 'linkstash/write';
+const isObject = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null;
+
+const isWriteRequest = (v: unknown): v is WriteRequest => {
+  if (!isObject(v)) return false;
+  if (v.kind === 'create') return isObject(v.input) && typeof v.input.url === 'string';
+  if (v.kind === 'update') return typeof v.id === 'number' && isObject(v.patch);
+  if (v.kind === 'delete') return typeof v.id === 'number';
+  return false;
+};
+
+export const isWriteEnvelope = (v: unknown): v is WriteEnvelope => {
+  if (!isObject(v)) return false;
+  if (v.channel !== 'linkstash/write') return false;
+  if (!isWriteRequest(v.request)) return false;
+  if ('originTabId' in v && typeof v.originTabId !== 'number' && v.originTabId !== undefined) {
+    return false;
+  }
+  return true;
+};
 
 export const sendWrite = async (
   request: WriteRequest,
