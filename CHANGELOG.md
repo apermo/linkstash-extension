@@ -18,6 +18,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Save confirmations are now an in-page pill (top-of-tab toast)
+  instead of a `chrome.notifications` system toast. The page-side
+  toast is reliable across macOS notification settings, doesn't
+  require Focus / Do-Not-Disturb to be off, and shows up where
+  the user's attention already is. The pill auto-dismisses after
+  ~2.6 s and replaces itself rather than stacking on rapid saves.
+- Manifest permissions: `notifications` removed (no longer used),
+  `scripting` added (used to inject the in-page toast via
+  `chrome.scripting.executeScript`).
 - API types synced to LinkStash plugin v0.1.1: `unread` and
   `archived` removed from `Bookmark`, `BookmarkInput`, and
   `BookmarkPatch`; `favorite` added in their place. Runtime

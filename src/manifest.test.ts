@@ -11,7 +11,7 @@ describe('manifest', () => {
       'storage',
       'activeTab',
       'contextMenus',
-      'notifications',
+      'scripting',
     ]);
     expect(manifest).not.toHaveProperty('host_permissions');
   });

@@ -16,7 +16,7 @@
     "service_worker": "src/background/index.ts",
     "type": "module"
   },
-  "permissions": ["storage", "activeTab", "contextMenus", "notifications"],
+  "permissions": ["storage", "activeTab", "contextMenus", "scripting"],
   "optional_host_permissions": ["https://*/*"],
   "icons": {
     "16": "src/assets/icon-16.png",

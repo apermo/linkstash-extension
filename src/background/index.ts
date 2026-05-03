@@ -1,8 +1,9 @@
 import { LinkStashClient, isLinkStashError } from '../lib/api';
 import { fallbackTitle } from '../lib/link-title';
-import { isWriteEnvelope, type WriteResponse } from '../lib/messages';
+import { isWriteEnvelope } from '../lib/messages';
 import { readSettings, watchSettings, type Settings } from '../lib/settings';
-import { handleWrite, notificationFor } from './save';
+import { handleWrite } from './save';
+import { showToastIn, showToastInActiveTab, toastTextFor } from './toast';
 
 const MENU_ID_SAVE_LINK = 'linkstash:save-link';
 const MENU_ID_SAVE_PAGE = 'linkstash:save-page';
@@ -136,20 +137,6 @@ const ensureContextMenu = () => {
   });
 };
 
-const notify = (title: string, message: string) => {
-  void chrome.notifications.create({
-    type: 'basic',
-    iconUrl: chrome.runtime.getURL('src/assets/icon-128.png'),
-    title,
-    message,
-  });
-};
-
-const notifyResult = (resp: WriteResponse, fallbackUrl?: string) => {
-  const { title, message } = notificationFor(resp, fallbackUrl);
-  notify(title, message);
-};
-
 const onContextSave = async (
   info: chrome.contextMenus.OnClickData,
   tab: chrome.tabs.Tab | undefined,
@@ -165,14 +152,18 @@ const onContextSave = async (
     return;
   }
   if (!url || !/^https?:\/\//i.test(url)) return;
+  const tabId = tab?.id;
+  const announce = (text: string, kind: 'success' | 'error') =>
+    tabId != null ? showToastIn(tabId, text, kind) : showToastInActiveTab(text, kind);
+
   const settings = await readSettings();
   if (!settings) {
-    notify('LinkStash', 'Configure the extension first.');
+    void announce('LinkStash: configure the extension first', 'error');
     void chrome.runtime.openOptionsPage();
     return;
   }
   if (!(await chrome.permissions.contains({ origins: [originPattern(settings.host)] }))) {
-    notify('LinkStash', 'Grant host permission in options first.');
+    void announce('LinkStash: grant host permission in options first', 'error');
     void chrome.runtime.openOptionsPage();
     return;
   }
@@ -184,7 +175,8 @@ const onContextSave = async (
     kind: 'create',
     input: { url, title, public: settings.defaultVisibility === 'public' },
   });
-  notifyResult(resp, url);
+  const { text, kind } = toastTextFor(resp);
+  void announce(text, kind);
   if (resp.ok) refreshActiveBadges();
 };
 
@@ -195,11 +187,18 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 // Popup → SW save channel. Routing writes through the SW means a
 // pending fetch survives the popup closing (Chrome popup JS is killed
 // the moment the popup loses focus); the SW also surfaces success or
-// failure via chrome.notifications so the user always sees a result.
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+// failure via an injected in-page toast so the user always sees a
+// result, even after the popup is gone.
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (!isWriteEnvelope(msg)) return undefined;
+  const tabId = sender.tab?.id;
   void handleWrite(msg.request).then((resp) => {
-    notifyResult(resp);
+    const { text, kind } = toastTextFor(resp);
+    if (tabId != null) {
+      void showToastIn(tabId, text, kind);
+    } else {
+      void showToastInActiveTab(text, kind);
+    }
     if (resp.ok) refreshActiveBadges();
     sendResponse(resp);
   });
