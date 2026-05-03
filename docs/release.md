@@ -45,14 +45,20 @@ LinkStash before tagging.
    to the Chrome Web Store.
 
 > **GitHub gotcha:** the `release` reusable workflow runs under
-> `GITHUB_TOKEN`, and GitHub doesn't fire downstream workflows for
-> events created by `GITHUB_TOKEN` (loop-prevention). Both
-> `release-asset.yml` and `publish.yml` therefore listen on
-> `release: [created, published]` **and** `push: tags: ['v*']` **and**
-> `workflow_dispatch`. The tag-push trigger fires regardless of who
-> created the tag; the `workflow_dispatch` form takes a `tag` input
-> so you can rerun by hand if needed (Actions tab → workflow → Run
-> workflow → enter `vX.Y.Z`).
+> `GITHUB_TOKEN`, and GitHub's loop-prevention rule suppresses
+> downstream workflow runs for *any* event created by
+> `GITHUB_TOKEN` — including `push` events for tags it created.
+> So neither `release: [created, published]` nor
+> `push: tags: ['v*']` will fire automatically when the reusable
+> workflow tags + releases the next version. Both
+> `release-asset.yml` and `publish.yml` listen on those triggers
+> for completeness (e.g. when a human pushes a tag), but the
+> reliable path today is the `workflow_dispatch` fallback: open
+> the Actions tab → pick **Release Asset** (and then **Publish to
+> Chrome Web Store**) → **Run workflow** → enter `vX.Y.Z`. To
+> remove the manual step, change the reusable workflow to push
+> the tag using a PAT or a GitHub App token instead of
+> `GITHUB_TOKEN`.
 
 ## First-time Chrome Web Store setup
 
