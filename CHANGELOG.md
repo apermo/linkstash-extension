@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Firefox manifest variant via `BROWSER=firefox` build (closes #16):
+  `npm run build:firefox` emits `dist-firefox/` with a
+  `browser_specific_settings.gecko` block; `npm run package:firefox`
+  zips it for AMO submission. Edge consumes the unchanged Chrome zip.
+
 ## [0.1.0] - 2026-05-02
 
 Initial public release.

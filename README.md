@@ -85,8 +85,10 @@ The detailed implementation plan lives in
 
 ```bash
 npm install
-npm run dev       # Vite dev server with extension HMR
-npm run build     # production build to dist/
+npm run dev               # Vite dev server with extension HMR
+npm run build             # production chrome build to dist/
+npm run build:firefox     # firefox build to dist-firefox/
+npm run build:all         # both
 npm run lint
 npm run lint:fix
 npm run test
