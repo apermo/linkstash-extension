@@ -4,8 +4,7 @@ export interface Bookmark {
   title: string;
   description: string;
   tags: string[];
-  unread: boolean;
-  archived: boolean;
+  favorite: boolean;
   public: boolean;
   created: string;
   modified: string;
@@ -16,8 +15,7 @@ export interface BookmarkInput {
   title?: string;
   description?: string;
   tags?: string[];
-  unread?: boolean;
-  archived?: boolean;
+  favorite?: boolean;
   public?: boolean;
 }
 
@@ -26,8 +24,7 @@ export interface BookmarkPatch {
   title?: string;
   description?: string;
   tags?: string[];
-  unread?: boolean;
-  archived?: boolean;
+  favorite?: boolean;
   public?: boolean;
 }
 

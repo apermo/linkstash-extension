@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- API types synced to LinkStash plugin v0.1.1: `unread` and
+  `archived` removed from `Bookmark`, `BookmarkInput`, and
+  `BookmarkPatch`; `favorite` added in their place. Runtime
+  behaviour unchanged — the popup never read or sent the dropped
+  fields — but the types no longer lie about the response shape.
+
 ### Fixed
 
 - Popup saves now survive the popup closing. Create/update/delete
