@@ -128,8 +128,12 @@ export class LinkStashClient {
   async testConnection(): Promise<
     { ok: true } | { ok: false; reason: 'auth' | 'notFound' | 'server' | 'network'; message: string }
   > {
+    // Hits /check (require_read_bookmarks → current_user_can('edit_posts')),
+    // which is the same capability gate POST /bookmarks uses. /tags?q=
+    // would 200 even for an anonymous request because of allow_anyone, so
+    // a broken or read-only token would falsely report "Connection ok".
     try {
-      await this.tags('');
+      await this.check('https://linkstash.invalid/connection-probe');
       return { ok: true };
     } catch (e) {
       if (isLinkStashError(e)) {

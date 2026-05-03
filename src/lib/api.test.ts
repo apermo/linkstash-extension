@@ -143,8 +143,15 @@ describe('LinkStashClient', () => {
   });
 
   describe('testConnection', () => {
-    it('returns ok:true when /tags responds 200', async () => {
-      fetchMock.mockResolvedValueOnce(ok([]));
+    it('hits /check (the auth-gated endpoint) rather than /tags', async () => {
+      fetchMock.mockResolvedValueOnce(ok({ exists: false }));
+      await client().testConnection();
+      const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toMatch(/\/wp-json\/linkstash\/v1\/check\?url=/);
+    });
+
+    it('returns ok:true when /check responds 200', async () => {
+      fetchMock.mockResolvedValueOnce(ok({ exists: false }));
       await expect(client().testConnection()).resolves.toEqual({ ok: true });
     });
 
@@ -152,6 +159,18 @@ describe('LinkStashClient', () => {
       fetchMock.mockResolvedValueOnce(err(401, { code: 'rest_forbidden', message: 'No.' }));
       const result = await client().testConnection();
       expect(result).toEqual({ ok: false, reason: 'auth', message: expect.any(String) });
+    });
+
+    it('returns ok:false with auth reason on 403 (read-only or unknown token)', async () => {
+      fetchMock.mockResolvedValueOnce(
+        err(403, { code: 'linkstash_forbidden', message: 'You are not allowed to read bookmarks.' }),
+      );
+      const result = await client().testConnection();
+      expect(result).toEqual({
+        ok: false,
+        reason: 'auth',
+        message: 'You are not allowed to read bookmarks.',
+      });
     });
 
     it('returns ok:false with network reason when fetch throws', async () => {

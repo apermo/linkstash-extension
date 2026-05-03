@@ -28,6 +28,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Options page "Test connection" now actually validates the
+  token. The probe used to call `GET /tags?q=` which the plugin
+  serves with `permission_callback => allow_anyone`, so an
+  invalid or read-only token returned 200 and the UI showed
+  "Connection ok" before any save attempt would fail with 403.
+  The probe now hits `GET /check?url=…`, which is gated on the
+  same `edit_posts` capability that `POST /bookmarks` requires.
 - Popup saves now survive the popup closing. Create/update/delete
   operations are dispatched through `chrome.runtime.sendMessage` to
   the service worker, which completes the request and surfaces the
