@@ -156,28 +156,29 @@ const onContextSave = async (
   const announce = (text: string, kind: 'success' | 'error') =>
     tabId != null ? showToastIn(tabId, text, kind) : showToastInActiveTab(text, kind);
 
+  // Settings is read here for `defaultVisibility` only. `handleWrite`
+  // does its own (idempotent) settings read + host permission check
+  // and surfaces both as `error.kind === 'config' | 'permission'` —
+  // we react to that below by opening the options page rather than
+  // re-checking here.
   const settings = await readSettings();
-  if (!settings) {
-    void announce('LinkStash: configure the extension first', 'error');
-    void chrome.runtime.openOptionsPage();
-    return;
-  }
-  if (!(await chrome.permissions.contains({ origins: [originPattern(settings.host)] }))) {
-    void announce('LinkStash: grant host permission in options first', 'error');
-    void chrome.runtime.openOptionsPage();
-    return;
-  }
   const title =
     info.menuItemId === MENU_ID_SAVE_PAGE && pageTitle
       ? pageTitle
       : fallbackTitle(url, { selection: info.selectionText });
   const resp = await handleWrite({
     kind: 'create',
-    input: { url, title, public: settings.defaultVisibility === 'public' },
+    input: { url, title, public: settings?.defaultVisibility === 'public' },
   });
   const { text, kind } = toastTextFor(resp);
   void announce(text, kind);
-  if (resp.ok) refreshActiveBadges();
+  if (resp.ok) {
+    refreshActiveBadges();
+    return;
+  }
+  if (resp.error.kind === 'config' || resp.error.kind === 'permission') {
+    void chrome.runtime.openOptionsPage();
+  }
 };
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
