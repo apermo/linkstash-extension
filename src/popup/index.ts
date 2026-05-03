@@ -209,9 +209,10 @@ const onSubmit = async () => {
       setStatus('Updated.', 'success');
     }
   } catch (e) {
-    // sendMessage throws if the SW is gone or there's no listener; the
-    // SW's notification path covers the case where the popup closed
-    // before the response arrived, so swallow silently here.
+    // `chrome.runtime.sendMessage` throws if the SW has no listener
+    // or the message port closed early. Best-effort surface inline;
+    // the SW's in-page toast path is the primary feedback channel
+    // and covers the popup-already-closed case.
     setStatus(humanize(e), 'error');
   } finally {
     elements.save.disabled = false;

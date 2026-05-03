@@ -63,22 +63,3 @@ export const handleWrite = async (request: WriteRequest): Promise<WriteResponse>
   }
 };
 
-export const notificationFor = (
-  resp: WriteResponse,
-  fallbackUrl?: string,
-): { title: string; message: string } => {
-  if (!resp.ok) {
-    return { title: 'LinkStash error', message: resp.error.message };
-  }
-  if (resp.kind === 'create') {
-    const subtitle = resp.result.bookmark.title || resp.result.bookmark.url || fallbackUrl || '';
-    return {
-      title: resp.result.existing ? 'Updated in LinkStash' : 'Saved to LinkStash',
-      message: subtitle,
-    };
-  }
-  if (resp.kind === 'update') {
-    return { title: 'Updated in LinkStash', message: resp.bookmark.title || resp.bookmark.url };
-  }
-  return { title: 'Removed from LinkStash', message: '' };
-};

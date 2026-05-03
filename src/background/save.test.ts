@@ -1,8 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { LinkStashClient} from '../lib/api';
-import { LinkStashError, type Bookmark } from '../lib/api';
+import { LinkStashError, type Bookmark, type LinkStashClient } from '../lib/api';
 import { installChromeStub } from '../test/chrome-stub';
-import { handleWrite, notificationFor, performWrite, writeErrorPayload } from './save';
+import { handleWrite, performWrite, writeErrorPayload } from './save';
 
 const VALID_SETTINGS = {
   host: 'https://bookmarks.example.tld',
@@ -174,61 +173,3 @@ describe('handleWrite', () => {
   });
 });
 
-describe('notificationFor', () => {
-  it('uses the saved title for a fresh create', () => {
-    expect(
-      notificationFor({
-        ok: true,
-        kind: 'create',
-        result: { bookmark: fullBookmark({ title: 'My title' }), existing: false },
-      }),
-    ).toEqual({ title: 'Saved to LinkStash', message: 'My title' });
-  });
-
-  it('uses the "Updated" title when the bookmark already existed', () => {
-    expect(
-      notificationFor({
-        ok: true,
-        kind: 'create',
-        result: { bookmark: fullBookmark(), existing: true },
-      }).title,
-    ).toBe('Updated in LinkStash');
-  });
-
-  it('falls back to the URL when the saved title is empty', () => {
-    expect(
-      notificationFor(
-        {
-          ok: true,
-          kind: 'create',
-          result: {
-            bookmark: fullBookmark({ title: '', url: '' }),
-            existing: false,
-          },
-        },
-        'https://example.tld/x',
-      ).message,
-    ).toBe('https://example.tld/x');
-  });
-
-  it('produces an error notification when the response is not ok', () => {
-    expect(
-      notificationFor({
-        ok: false,
-        error: {
-          kind: 'auth',
-          status: 403,
-          code: 'linkstash_forbidden',
-          message: 'You are not allowed to create or modify bookmarks.',
-        },
-      }),
-    ).toEqual({
-      title: 'LinkStash error',
-      message: 'You are not allowed to create or modify bookmarks.',
-    });
-  });
-
-  it('uses a delete-specific title when the response is a delete', () => {
-    expect(notificationFor({ ok: true, kind: 'delete' }).title).toBe('Removed from LinkStash');
-  });
-});

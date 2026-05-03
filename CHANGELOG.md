@@ -63,9 +63,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Popup saves now survive the popup closing. Create/update/delete
   operations are dispatched through `chrome.runtime.sendMessage` to
   the service worker, which completes the request and surfaces the
-  result via `chrome.notifications` regardless of whether the popup
-  is still open. Previously a slow request whose popup lost focus
-  before the response arrived would silently fail.
+  result via the in-page toast (see Changed) regardless of whether
+  the popup is still open. Previously a slow request whose popup
+  lost focus before the response arrived would silently fail.
 - Service worker no longer surfaces stackless "Anonymous function"
   errors in `chrome://extensions/` from closed-tab races. The
   `chrome.tabs.get` / `chrome.tabs.query` chains in the badge
