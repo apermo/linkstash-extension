@@ -33,32 +33,71 @@ jobs:
         permissions:
             contents: read
         steps:
+            # Resolves the tag name and whether it's a prerelease.
+            # The `release` event gives us a `prerelease` flag
+            # directly; the `push: tags: ['v*']` and
+            # `workflow_dispatch` triggers don't, so we infer from
+            # the tag — anything containing a hyphen is treated as a
+            # semver prerelease (v0.1.1-beta.1, v1.0.0-rc.2, ...).
             - name: Resolve tag
               id: tag
               run: |
                   if [ -n "${{ github.event.inputs.tag }}" ]; then
-                      echo "name=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+                      NAME="${{ github.event.inputs.tag }}"
+                      [[ "$NAME" == *-* ]] && PRE=true || PRE=false
                   elif [ -n "${{ github.event.release.tag_name }}" ]; then
-                      echo "name=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
+                      NAME="${{ github.event.release.tag_name }}"
+                      PRE="${{ github.event.release.prerelease }}"
                   else
-                      echo "name=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+                      NAME="${GITHUB_REF#refs/tags/}"
+                      [[ "$NAME" == *-* ]] && PRE=true || PRE=false
                   fi
+                  echo "name=$NAME" >> "$GITHUB_OUTPUT"
+                  echo "prerelease=$PRE" >> "$GITHUB_OUTPUT"
+            - name: Skip prerelease
+              if: ${{ steps.tag.outputs.prerelease == 'true' }}
+              run: |
+                  echo "::notice::Tag ${{ steps.tag.outputs.name }} is a prerelease — skipping Chrome Web Store publish."
+            # On a `push: tags` trigger the workflow can fire before
+            # the GitHub Release record exists. The CWS upload itself
+            # doesn't read the Release, but other downstream tooling
+            # might; wait so all triggers see the same state.
+            - name: Wait for the GitHub Release to exist
+              if: ${{ github.event_name == 'push' && steps.tag.outputs.prerelease != 'true' }}
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  TAG: ${{ steps.tag.outputs.name }}
+              run: |
+                  for i in $(seq 1 30); do
+                      if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+                          echo "Release $TAG present after $((i * 10))s."
+                          exit 0
+                      fi
+                      sleep 10
+                  done
+                  echo "Release $TAG never appeared after 5 minutes — bailing." >&2
+                  exit 1
             - uses: actions/checkout@v4
+              if: ${{ steps.tag.outputs.prerelease != 'true' }}
               with:
                   ref: ${{ steps.tag.outputs.name }}
             - uses: actions/setup-node@v4
+              if: ${{ steps.tag.outputs.prerelease != 'true' }}
               with:
                   node-version: '22'
                   cache: 'npm'
-            - run: npm ci
-            - run: npm run package
+            - if: ${{ steps.tag.outputs.prerelease != 'true' }}
+              run: npm ci
+            - if: ${{ steps.tag.outputs.prerelease != 'true' }}
+              run: npm run package
             - name: Locate built zip
               id: zip
+              if: ${{ steps.tag.outputs.prerelease != 'true' }}
               run: |
                   ZIP=$(ls releases/linkstash-extension-*.zip | head -n1)
                   echo "path=$ZIP" >> "$GITHUB_OUTPUT"
             - name: Upload to Chrome Web Store
-              if: ${{ env.CWS_EXTENSION_ID != '' }}
+              if: ${{ steps.tag.outputs.prerelease != 'true' && env.CWS_EXTENSION_ID != '' }}
               env:
                   CWS_EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
                   CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}

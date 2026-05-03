@@ -76,6 +76,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   job runs under `GITHUB_TOKEN`, which doesn't fire downstream
   workflows; this widens the trigger so the next tag self-attaches
   the build artefact and self-publishes to the Chrome Web Store.
+- `publish.yml` skips prerelease tags. With the new `push: tags`
+  trigger the `release.prerelease` flag isn't available, so the
+  resolved tag name is checked for a hyphen (the semver
+  prerelease convention) and the Chrome Web Store publish step is
+  short-circuited for `vX.Y.Z-rc.N` style tags.
+- `release-asset.yml` (and `publish.yml`) now wait up to five
+  minutes for the GitHub Release record to exist before calling
+  `gh release upload`. Without this the push-tag trigger could
+  race the upstream release-cutter and fail with "release not
+  found".
 
 ## [0.1.0] - 2026-05-02
 
