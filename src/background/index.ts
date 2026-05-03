@@ -189,9 +189,18 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 // the moment the popup loses focus); the SW also surfaces success or
 // failure via an injected in-page toast so the user always sees a
 // result, even after the popup is gone.
+//
+// Tab routing for the toast prefers, in order:
+//   1. `envelope.originTabId` — the popup captures its tab at send
+//      time, which is correct even if the user has switched tabs
+//      while the fetch is in flight. `sender.tab` is undefined for
+//      messages from extension pages (popup, options).
+//   2. `sender.tab?.id` — populated for content-script messages,
+//      accepted defensively.
+//   3. The currently active tab — last-resort fallback.
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (!isWriteEnvelope(msg)) return undefined;
-  const tabId = sender.tab?.id;
+  const tabId = msg.originTabId ?? sender.tab?.id;
   void handleWrite(msg.request).then((resp) => {
     const { text, kind } = toastTextFor(resp);
     if (tabId != null) {

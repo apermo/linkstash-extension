@@ -70,12 +70,17 @@ const requestPermission = async (host: string): Promise<boolean> =>
 const activeTab = async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.url) throw new Error('No active tab to save.');
-  return { url: tab.url, title: tab.title ?? '' };
+  return { id: tab.id, url: tab.url, title: tab.title ?? '' };
 };
 
 let mode: Mode | null = null;
 let settings: Settings | null = null;
 let client: LinkStashClient | null = null;
+// Capture the popup's tab id at open time so the SW can route the
+// confirmation toast back to the originating tab even if the user has
+// switched tabs by the time the fetch resolves. `sender.tab` on the SW
+// side is undefined for popup-originated messages.
+let originTabId: number | undefined;
 
 const renderMode = () => {
   if (!mode) return;
@@ -120,6 +125,7 @@ const init = async () => {
   client = new LinkStashClient(settings.host, settings.token);
 
   const tab = await activeTab();
+  originTabId = tab.id;
   try {
     const checkResult = await client.check(tab.url);
     if (checkResult.exists && typeof checkResult.id === 'number') {
@@ -182,9 +188,12 @@ const onSubmit = async () => {
   try {
     let resp: WriteResponse;
     if (mode.kind === 'new') {
-      resp = await sendWrite({ kind: 'create', input });
+      resp = await sendWrite({ kind: 'create', input }, { originTabId });
     } else {
-      resp = await sendWrite({ kind: 'update', id: mode.bookmark.id, patch: input });
+      resp = await sendWrite(
+        { kind: 'update', id: mode.bookmark.id, patch: input },
+        { originTabId },
+      );
     }
     if (!resp.ok) {
       setStatus(humanizeWriteError(resp.error), 'error');
@@ -219,7 +228,7 @@ const onDelete = async () => {
   elements.delete.disabled = true;
   setStatus('Deleting…');
   try {
-    const resp = await sendWrite({ kind: 'delete', id: mode.bookmark.id });
+    const resp = await sendWrite({ kind: 'delete', id: mode.bookmark.id }, { originTabId });
     if (!resp.ok) {
       setStatus(humanizeWriteError(resp.error), 'error');
       return;

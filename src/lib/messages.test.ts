@@ -39,4 +39,31 @@ describe('sendWrite', () => {
       vi.unstubAllGlobals();
     }
   });
+
+  it('threads originTabId onto the envelope when provided', async () => {
+    const sendMessage = vi.fn().mockResolvedValue({ ok: true, kind: 'delete' });
+    vi.stubGlobal('chrome', { runtime: { sendMessage } });
+    try {
+      await sendWrite({ kind: 'delete', id: 1 }, { originTabId: 42 });
+      expect(sendMessage).toHaveBeenCalledWith({
+        channel: 'linkstash/write',
+        request: { kind: 'delete', id: 1 },
+        originTabId: 42,
+      });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('omits originTabId from the envelope when undefined', async () => {
+    const sendMessage = vi.fn().mockResolvedValue({ ok: true, kind: 'delete' });
+    vi.stubGlobal('chrome', { runtime: { sendMessage } });
+    try {
+      await sendWrite({ kind: 'delete', id: 1 }, { originTabId: undefined });
+      const [envelope] = sendMessage.mock.calls[0] as [Record<string, unknown>];
+      expect(envelope).not.toHaveProperty('originTabId');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });

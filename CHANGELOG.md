@@ -37,6 +37,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Save toasts from popup-routed writes now render on the
+  originating tab instead of the currently active tab. The popup
+  captures its tab id at open time and threads it onto the
+  `WriteEnvelope` so the SW can route the confirmation to the
+  right tab even if the user has switched tabs while the request
+  was in flight.
 - All API requests now use `credentials: 'omit'`. Chrome
   extensions with host permissions auto-attach the user's cookies
   to cross-origin fetches, so a user who's also logged into the
