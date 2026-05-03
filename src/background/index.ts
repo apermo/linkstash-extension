@@ -72,10 +72,21 @@ const debouncedUpdate = debounce(
   DEBOUNCE_MS,
 );
 
+// Closed-tab races (tab dies between onActivated firing and tabs.get
+// resolving) reject with "No tab with id N". Swallowing keeps Chrome's
+// extension error log clean of stackless rejections that don't
+// represent a real failure.
+const swallow = () => {
+  /* intentional */
+};
+
 chrome.tabs.onActivated.addListener(({ tabId }) => {
-  void chrome.tabs.get(tabId).then((tab) => {
-    debouncedUpdate(tabId, tab.url);
-  });
+  chrome.tabs
+    .get(tabId)
+    .then((tab) => {
+      debouncedUpdate(tabId, tab.url);
+    })
+    .catch(swallow);
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
@@ -85,17 +96,23 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
 chrome.windows.onFocusChanged.addListener((windowId) => {
   if (windowId === chrome.windows.WINDOW_ID_NONE) return;
-  void chrome.tabs.query({ active: true, windowId }).then(([tab]) => {
-    if (tab?.id != null) debouncedUpdate(tab.id, tab.url);
-  });
+  chrome.tabs
+    .query({ active: true, windowId })
+    .then(([tab]) => {
+      if (tab?.id != null) debouncedUpdate(tab.id, tab.url);
+    })
+    .catch(swallow);
 });
 
 watchSettings(() => {
-  void chrome.tabs.query({ active: true }).then((tabs) => {
-    for (const tab of tabs) {
-      if (tab.id != null) debouncedUpdate(tab.id, tab.url);
-    }
-  });
+  chrome.tabs
+    .query({ active: true })
+    .then((tabs) => {
+      for (const tab of tabs) {
+        if (tab.id != null) debouncedUpdate(tab.id, tab.url);
+      }
+    })
+    .catch(swallow);
 });
 
 const ensureContextMenu = () => {
@@ -174,11 +191,14 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 
 chrome.runtime.onInstalled.addListener(() => {
   ensureContextMenu();
-  void chrome.tabs.query({ active: true }).then((tabs) => {
-    for (const tab of tabs) {
-      if (tab.id != null) debouncedUpdate(tab.id, tab.url);
-    }
-  });
+  chrome.tabs
+    .query({ active: true })
+    .then((tabs) => {
+      for (const tab of tabs) {
+        if (tab.id != null) debouncedUpdate(tab.id, tab.url);
+      }
+    })
+    .catch(swallow);
 });
 
 chrome.runtime.onStartup.addListener(() => {
