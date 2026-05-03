@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { createWriteStream, existsSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,17 +7,26 @@ import { spawn } from 'node:child_process';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, '..');
-const distDir = join(repoRoot, 'dist');
 const releasesDir = join(repoRoot, 'releases');
 
+const browserArg = process.argv.find((a) => a.startsWith('--browser='));
+const browser = browserArg ? browserArg.split('=')[1] : 'chrome';
+if (browser !== 'chrome' && browser !== 'firefox') {
+  console.error(`--browser must be "chrome" or "firefox" (got "${browser}")`);
+  process.exit(1);
+}
+
+const distDir = join(repoRoot, browser === 'firefox' ? 'dist-firefox' : 'dist');
+
 if (!existsSync(distDir) || !statSync(distDir).isDirectory()) {
-  console.error('dist/ does not exist — run `npm run build` first.');
+  console.error(`${distDir} does not exist — run \`npm run build:${browser}\` first.`);
   process.exit(1);
 }
 
 const pkg = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8'));
 const version = pkg.version;
-const zipName = `linkstash-extension-v${version}.zip`;
+const suffix = browser === 'firefox' ? '-firefox' : '';
+const zipName = `linkstash-extension${suffix}-v${version}.zip`;
 const zipPath = join(releasesDir, zipName);
 
 await mkdir(releasesDir, { recursive: true });
@@ -36,5 +45,6 @@ await new Promise((resolvePromise, rejectPromise) => {
 });
 
 const size = (statSync(zipPath).size / 1024).toFixed(1);
+const target = browser === 'firefox' ? 'AMO (addons.mozilla.org)' : 'the Chrome Web Store dev console';
 console.log(`\n✓ Packaged ${zipName} (${size} KB) → ${zipPath}`);
-console.log('  Upload this to the Chrome Web Store dev console.');
+console.log(`  Upload this to ${target}.`);

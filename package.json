@@ -7,14 +7,20 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "npm run build:chrome",
+    "build:chrome": "tsc -b && BROWSER=chrome vite build",
+    "build:firefox": "tsc -b && BROWSER=firefox vite build",
+    "build:all": "npm run build:chrome && npm run build:firefox",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "package": "npm run build && node scripts/package.mjs"
+    "package": "npm run package:chrome",
+    "package:chrome": "npm run build:chrome && node scripts/package.mjs --browser=chrome",
+    "package:firefox": "npm run build:firefox && node scripts/package.mjs --browser=firefox",
+    "package:all": "npm run package:chrome && npm run package:firefox"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^2.0.0",
