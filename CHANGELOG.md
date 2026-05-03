@@ -28,6 +28,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- All API requests now use `credentials: 'omit'`. Chrome
+  extensions with host permissions auto-attach the user's cookies
+  to cross-origin fetches, so a user who's also logged into the
+  WP admin sent both a Bearer token and a `wordpress_logged_in_*`
+  cookie on every request. WordPress's `rest_cookie_check_errors`
+  saw cookie auth without an `X-WP-Nonce` header and forcibly
+  demoted the request to anonymous before LinkStash's permission
+  callback ran, producing a 403 `linkstash_forbidden` even though
+  the token was valid. The fix scopes auth to the bearer token
+  alone and tells the browser not to attach session cookies.
 - Options page "Test connection" now actually validates the
   token. The probe used to call `GET /tags?q=` which the plugin
   serves with `permission_callback => allow_anyone`, so an

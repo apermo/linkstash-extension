@@ -55,6 +55,18 @@ describe('LinkStashClient', () => {
     expect((init.headers as Record<string, string>).Accept).toBe('application/json');
   });
 
+  it('uses credentials: "omit" so the browser does not auto-attach cookies', async () => {
+    // Chrome extensions with host_permissions auto-attach cookies on
+    // cross-origin fetches; if the user is also logged into WP admin,
+    // wp_rest_auth_cookie + missing X-WP-Nonce demotes the request to
+    // anonymous before LinkStash's permission_callback runs. Omitting
+    // credentials keeps the bearer-token path clean.
+    fetchMock.mockResolvedValueOnce(ok({ exists: false }));
+    await client().check('https://example.tld/x');
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(init.credentials).toBe('omit');
+  });
+
   describe('check', () => {
     it('encodes the URL and returns { exists, id }', async () => {
       fetchMock.mockResolvedValueOnce(ok({ exists: true, id: 7 }));

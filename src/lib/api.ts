@@ -151,7 +151,17 @@ export class LinkStashClient {
     if (init.body !== undefined) headers['Content-Type'] = 'application/json';
     let res: Response;
     try {
-      res = await fetch(`${this.base}${path}`, { ...init, headers });
+      // `credentials: 'omit'` is critical. Chrome extensions with host
+      // permissions auto-attach the user's cookies to fetches, so a user
+      // who's also logged into the WP admin would send both the Bearer
+      // token *and* a `wordpress_logged_in_*` cookie. WP's
+      // `rest_cookie_check_errors` then sees cookie auth without an
+      // `X-WP-Nonce` header and forcibly demotes the request to
+      // anonymous (`wp_set_current_user(0)`) before the permission
+      // callback runs, producing a misleading 403 even though the token
+      // itself is valid. Omitting credentials keeps the bearer-token
+      // auth path clean.
+      res = await fetch(`${this.base}${path}`, { ...init, headers, credentials: 'omit' });
     } catch (e) {
       throw new LinkStashError(
         'network',
