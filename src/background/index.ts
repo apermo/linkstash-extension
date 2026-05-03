@@ -1,6 +1,8 @@
 import { LinkStashClient, isLinkStashError } from '../lib/api';
 import { fallbackTitle } from '../lib/link-title';
+import { isWriteEnvelope, type WriteResponse } from '../lib/messages';
 import { readSettings, watchSettings, type Settings } from '../lib/settings';
+import { handleWrite, notificationFor } from './save';
 
 const MENU_ID_SAVE_LINK = 'linkstash:save-link';
 const MENU_ID_SAVE_PAGE = 'linkstash:save-page';
@@ -80,6 +82,17 @@ const swallow = () => {
   /* intentional */
 };
 
+const refreshActiveBadges = () => {
+  chrome.tabs
+    .query({ active: true })
+    .then((tabs) => {
+      for (const tab of tabs) {
+        if (tab.id != null) debouncedUpdate(tab.id, tab.url);
+      }
+    })
+    .catch(swallow);
+};
+
 chrome.tabs.onActivated.addListener(({ tabId }) => {
   chrome.tabs
     .get(tabId)
@@ -105,14 +118,7 @@ chrome.windows.onFocusChanged.addListener((windowId) => {
 });
 
 watchSettings(() => {
-  chrome.tabs
-    .query({ active: true })
-    .then((tabs) => {
-      for (const tab of tabs) {
-        if (tab.id != null) debouncedUpdate(tab.id, tab.url);
-      }
-    })
-    .catch(swallow);
+  refreshActiveBadges();
 });
 
 const ensureContextMenu = () => {
@@ -137,6 +143,11 @@ const notify = (title: string, message: string) => {
     title,
     message,
   });
+};
+
+const notifyResult = (resp: WriteResponse, fallbackUrl?: string) => {
+  const { title, message } = notificationFor(resp, fallbackUrl);
+  notify(title, message);
 };
 
 const onContextSave = async (
@@ -165,40 +176,39 @@ const onContextSave = async (
     void chrome.runtime.openOptionsPage();
     return;
   }
-  const client = new LinkStashClient(settings.host, settings.token);
-  try {
-    const result = await client.create({
-      url,
-      title:
-        info.menuItemId === MENU_ID_SAVE_PAGE && pageTitle
-          ? pageTitle
-          : fallbackTitle(url, { selection: info.selectionText }),
-      public: settings.defaultVisibility === 'public',
-    });
-    notify(
-      result.existing ? 'Updated in LinkStash' : 'Saved to LinkStash',
-      result.bookmark.title || url,
-    );
-  } catch (e) {
-    const message = isLinkStashError(e) ? e.message : e instanceof Error ? e.message : String(e);
-    notify('LinkStash error', message);
-  }
+  const title =
+    info.menuItemId === MENU_ID_SAVE_PAGE && pageTitle
+      ? pageTitle
+      : fallbackTitle(url, { selection: info.selectionText });
+  const resp = await handleWrite({
+    kind: 'create',
+    input: { url, title, public: settings.defaultVisibility === 'public' },
+  });
+  notifyResult(resp, url);
+  if (resp.ok) refreshActiveBadges();
 };
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   void onContextSave(info, tab);
 });
 
+// Popup → SW save channel. Routing writes through the SW means a
+// pending fetch survives the popup closing (Chrome popup JS is killed
+// the moment the popup loses focus); the SW also surfaces success or
+// failure via chrome.notifications so the user always sees a result.
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (!isWriteEnvelope(msg)) return undefined;
+  void handleWrite(msg.request).then((resp) => {
+    notifyResult(resp);
+    if (resp.ok) refreshActiveBadges();
+    sendResponse(resp);
+  });
+  return true;
+});
+
 chrome.runtime.onInstalled.addListener(() => {
   ensureContextMenu();
-  chrome.tabs
-    .query({ active: true })
-    .then((tabs) => {
-      for (const tab of tabs) {
-        if (tab.id != null) debouncedUpdate(tab.id, tab.url);
-      }
-    })
-    .catch(swallow);
+  refreshActiveBadges();
 });
 
 chrome.runtime.onStartup.addListener(() => {

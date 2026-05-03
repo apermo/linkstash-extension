@@ -1,4 +1,5 @@
 import { LinkStashClient, isLinkStashError, type Bookmark, type BookmarkInput, type Tag } from '../lib/api';
+import { sendWrite, type WriteErrorPayload, type WriteResponse } from '../lib/messages';
 import { readSettings, type Settings } from '../lib/settings';
 import { currentToken, replaceToken } from '../lib/tags';
 
@@ -143,6 +144,14 @@ const humanize = (e: unknown): string => {
   return e instanceof Error ? e.message : String(e);
 };
 
+const humanizeWriteError = (err: WriteErrorPayload): string => {
+  if (err.kind === 'auth') return 'Token rejected — open options to reconfigure.';
+  if (err.kind === 'notFound') return 'Endpoint not found — is the LinkStash plugin active?';
+  if (err.kind === 'network') return 'Network error — check the host URL.';
+  if (err.kind === 'config' || err.kind === 'permission') return err.message;
+  return err.message;
+};
+
 const collectInput = (): BookmarkInput | null => {
   if (!mode) return null;
   const url = mode.kind === 'edit' ? mode.bookmark.url : mode.url;
@@ -167,18 +176,29 @@ const onSubmit = async () => {
   elements.save.disabled = true;
   setStatus('Saving…');
   try {
+    let resp: WriteResponse;
     if (mode.kind === 'new') {
-      const result = await client.create(input);
-      mode = { kind: 'edit', bookmark: result.bookmark };
-      renderMode();
-      setStatus(result.existing ? 'Updated existing bookmark.' : 'Saved.', 'success');
+      resp = await sendWrite({ kind: 'create', input });
     } else {
-      const updated = await client.update(mode.bookmark.id, input);
-      mode = { kind: 'edit', bookmark: updated };
+      resp = await sendWrite({ kind: 'update', id: mode.bookmark.id, patch: input });
+    }
+    if (!resp.ok) {
+      setStatus(humanizeWriteError(resp.error), 'error');
+      return;
+    }
+    if (resp.kind === 'create') {
+      mode = { kind: 'edit', bookmark: resp.result.bookmark };
+      renderMode();
+      setStatus(resp.result.existing ? 'Updated existing bookmark.' : 'Saved.', 'success');
+    } else if (resp.kind === 'update') {
+      mode = { kind: 'edit', bookmark: resp.bookmark };
       renderMode();
       setStatus('Updated.', 'success');
     }
   } catch (e) {
+    // sendMessage throws if the SW is gone or there's no listener; the
+    // SW's notification path covers the case where the popup closed
+    // before the response arrived, so swallow silently here.
     setStatus(humanize(e), 'error');
   } finally {
     elements.save.disabled = false;
@@ -195,7 +215,11 @@ const onDelete = async () => {
   elements.delete.disabled = true;
   setStatus('Deleting…');
   try {
-    await client.remove(mode.bookmark.id);
+    const resp = await sendWrite({ kind: 'delete', id: mode.bookmark.id });
+    if (!resp.ok) {
+      setStatus(humanizeWriteError(resp.error), 'error');
+      return;
+    }
     const url = mode.bookmark.url;
     const title = mode.bookmark.title;
     mode = { kind: 'new', url, title };
