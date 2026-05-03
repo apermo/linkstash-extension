@@ -15,8 +15,7 @@ const fullBookmark = (overrides: Partial<Bookmark> = {}): Bookmark => ({
   title: 'Article',
   description: '',
   tags: [],
-  unread: false,
-  archived: false,
+  favorite: false,
   public: false,
   created: '2026-05-01T00:00:00+00:00',
   modified: '2026-05-01T00:00:00+00:00',
@@ -54,6 +53,18 @@ describe('LinkStashClient', () => {
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect((init.headers as Record<string, string>).Authorization).toBe(`Bearer ${TOKEN}`);
     expect((init.headers as Record<string, string>).Accept).toBe('application/json');
+  });
+
+  it('uses credentials: "omit" so the browser does not auto-attach cookies', async () => {
+    // Chrome extensions with host_permissions auto-attach cookies on
+    // cross-origin fetches; if the user is also logged into WP admin,
+    // wp_rest_auth_cookie + missing X-WP-Nonce demotes the request to
+    // anonymous before LinkStash's permission_callback runs. Omitting
+    // credentials keeps the bearer-token path clean.
+    fetchMock.mockResolvedValueOnce(ok({ exists: false }));
+    await client().check('https://example.tld/x');
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(init.credentials).toBe('omit');
   });
 
   describe('check', () => {
@@ -144,8 +155,15 @@ describe('LinkStashClient', () => {
   });
 
   describe('testConnection', () => {
-    it('returns ok:true when /tags responds 200', async () => {
-      fetchMock.mockResolvedValueOnce(ok([]));
+    it('hits /check (the auth-gated endpoint) rather than /tags', async () => {
+      fetchMock.mockResolvedValueOnce(ok({ exists: false }));
+      await client().testConnection();
+      const [url] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toMatch(/\/wp-json\/linkstash\/v1\/check\?url=/);
+    });
+
+    it('returns ok:true when /check responds 200', async () => {
+      fetchMock.mockResolvedValueOnce(ok({ exists: false }));
       await expect(client().testConnection()).resolves.toEqual({ ok: true });
     });
 
@@ -153,6 +171,18 @@ describe('LinkStashClient', () => {
       fetchMock.mockResolvedValueOnce(err(401, { code: 'rest_forbidden', message: 'No.' }));
       const result = await client().testConnection();
       expect(result).toEqual({ ok: false, reason: 'auth', message: expect.any(String) });
+    });
+
+    it('returns ok:false with auth reason on 403 (read-only or unknown token)', async () => {
+      fetchMock.mockResolvedValueOnce(
+        err(403, { code: 'linkstash_forbidden', message: 'You are not allowed to read bookmarks.' }),
+      );
+      const result = await client().testConnection();
+      expect(result).toEqual({
+        ok: false,
+        reason: 'auth',
+        message: 'You are not allowed to read bookmarks.',
+      });
     });
 
     it('returns ok:false with network reason when fetch throws', async () => {

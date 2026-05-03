@@ -7,6 +7,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-05-03
+
+### Added
+
+- Popup: Favorite checkbox next to Public. Pre-checked from the
+  saved bookmark when editing; defaults to unchecked on a fresh
+  save. The state is sent as `favorite: bool` in create / update
+  requests so the extension matches the WP-Admin star toggle.
+
+### Changed
+
+- Save confirmations are now an in-page pill (top-of-tab toast)
+  instead of a `chrome.notifications` system toast. The page-side
+  toast is reliable across macOS notification settings, doesn't
+  require Focus / Do-Not-Disturb to be off, and shows up where
+  the user's attention already is. The pill auto-dismisses after
+  ~2.6 s and replaces itself rather than stacking on rapid saves.
+- Manifest permissions: `notifications` removed (no longer used),
+  `scripting` added (used to inject the in-page toast via
+  `chrome.scripting.executeScript`).
+- API types synced to LinkStash plugin v0.1.1: `unread` and
+  `archived` removed from `Bookmark`, `BookmarkInput`, and
+  `BookmarkPatch`; `favorite` added in their place. Runtime
+  behaviour unchanged — the popup never read or sent the dropped
+  fields — but the types no longer lie about the response shape.
+- `codecov/codecov-action` bumped from v4 to v5; the upload now
+  passes the repository slug explicitly.
+
+### Fixed
+
+- Save toasts from popup-routed writes now render on the
+  originating tab instead of the currently active tab. The popup
+  captures its tab id at open time and threads it onto the
+  `WriteEnvelope` so the SW can route the confirmation to the
+  right tab even if the user has switched tabs while the request
+  was in flight.
+- All API requests now use `credentials: 'omit'`. Chrome
+  extensions with host permissions auto-attach the user's cookies
+  to cross-origin fetches, so a user who's also logged into the
+  WP admin sent both a Bearer token and a `wordpress_logged_in_*`
+  cookie on every request. WordPress's `rest_cookie_check_errors`
+  saw cookie auth without an `X-WP-Nonce` header and forcibly
+  demoted the request to anonymous before LinkStash's permission
+  callback ran, producing a 403 `linkstash_forbidden` even though
+  the token was valid. The fix scopes auth to the bearer token
+  alone and tells the browser not to attach session cookies.
+- Options page "Test connection" now actually validates the
+  token. The probe used to call `GET /tags?q=` which the plugin
+  serves with `permission_callback => allow_anyone`, so an
+  invalid or read-only token returned 200 and the UI showed
+  "Connection ok" before any save attempt would fail with 403.
+  The probe now hits `GET /check?url=…`, which is gated on the
+  same `edit_posts` capability that `POST /bookmarks` requires.
+- Popup saves now survive the popup closing. Create/update/delete
+  operations are dispatched through `chrome.runtime.sendMessage` to
+  the service worker, which completes the request and surfaces the
+  result via the in-page toast (see Changed) regardless of whether
+  the popup is still open. Previously a slow request whose popup
+  lost focus before the response arrived would silently fail.
+- Service worker no longer surfaces stackless "Anonymous function"
+  errors in `chrome://extensions/` from closed-tab races. The
+  `chrome.tabs.get` / `chrome.tabs.query` chains in the badge
+  refresh paths now swallow rejections that happen when a tab is
+  destroyed mid-flight.
+- Release workflows (`release-asset.yml`, `publish.yml`) now also
+  listen on tag push and `workflow_dispatch`. The reusable release
+  job runs under `GITHUB_TOKEN`, which doesn't fire downstream
+  workflows; this widens the trigger so the next tag self-attaches
+  the build artefact and self-publishes to the Chrome Web Store.
+- `publish.yml` skips prerelease tags. With the new `push: tags`
+  trigger the `release.prerelease` flag isn't available, so the
+  resolved tag name is checked for a hyphen (the semver
+  prerelease convention) and the Chrome Web Store publish step is
+  short-circuited for `vX.Y.Z-rc.N` style tags.
+- `release-asset.yml` (and `publish.yml`) now wait up to five
+  minutes for the GitHub Release record to exist before calling
+  `gh release upload`. Without this the push-tag trigger could
+  race the upstream release-cutter and fail with "release not
+  found".
+
 ## [0.1.0] - 2026-05-02
 
 Initial public release.

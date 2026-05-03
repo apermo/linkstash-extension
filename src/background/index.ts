@@ -1,6 +1,9 @@
 import { LinkStashClient, isLinkStashError } from '../lib/api';
 import { fallbackTitle } from '../lib/link-title';
+import { isWriteEnvelope } from '../lib/messages';
 import { readSettings, watchSettings, type Settings } from '../lib/settings';
+import { handleWrite } from './save';
+import { showToastIn, showToastInActiveTab, toastTextFor } from './toast';
 
 const MENU_ID_SAVE_LINK = 'linkstash:save-link';
 const MENU_ID_SAVE_PAGE = 'linkstash:save-page';
@@ -72,10 +75,32 @@ const debouncedUpdate = debounce(
   DEBOUNCE_MS,
 );
 
+// Closed-tab races (tab dies between onActivated firing and tabs.get
+// resolving) reject with "No tab with id N". Swallowing keeps Chrome's
+// extension error log clean of stackless rejections that don't
+// represent a real failure.
+const swallow = () => {
+  /* intentional */
+};
+
+const refreshActiveBadges = () => {
+  chrome.tabs
+    .query({ active: true })
+    .then((tabs) => {
+      for (const tab of tabs) {
+        if (tab.id != null) debouncedUpdate(tab.id, tab.url);
+      }
+    })
+    .catch(swallow);
+};
+
 chrome.tabs.onActivated.addListener(({ tabId }) => {
-  void chrome.tabs.get(tabId).then((tab) => {
-    debouncedUpdate(tabId, tab.url);
-  });
+  chrome.tabs
+    .get(tabId)
+    .then((tab) => {
+      debouncedUpdate(tabId, tab.url);
+    })
+    .catch(swallow);
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
@@ -85,17 +110,16 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
 chrome.windows.onFocusChanged.addListener((windowId) => {
   if (windowId === chrome.windows.WINDOW_ID_NONE) return;
-  void chrome.tabs.query({ active: true, windowId }).then(([tab]) => {
-    if (tab?.id != null) debouncedUpdate(tab.id, tab.url);
-  });
+  chrome.tabs
+    .query({ active: true, windowId })
+    .then(([tab]) => {
+      if (tab?.id != null) debouncedUpdate(tab.id, tab.url);
+    })
+    .catch(swallow);
 });
 
 watchSettings(() => {
-  void chrome.tabs.query({ active: true }).then((tabs) => {
-    for (const tab of tabs) {
-      if (tab.id != null) debouncedUpdate(tab.id, tab.url);
-    }
-  });
+  refreshActiveBadges();
 });
 
 const ensureContextMenu = () => {
@@ -110,15 +134,6 @@ const ensureContextMenu = () => {
       title: 'Save page to LinkStash',
       contexts: ['page', 'selection'],
     });
-  });
-};
-
-const notify = (title: string, message: string) => {
-  void chrome.notifications.create({
-    type: 'basic',
-    iconUrl: chrome.runtime.getURL('src/assets/icon-128.png'),
-    title,
-    message,
   });
 };
 
@@ -137,34 +152,32 @@ const onContextSave = async (
     return;
   }
   if (!url || !/^https?:\/\//i.test(url)) return;
+  const tabId = tab?.id;
+  const announce = (text: string, kind: 'success' | 'error') =>
+    tabId != null ? showToastIn(tabId, text, kind) : showToastInActiveTab(text, kind);
+
+  // Settings is read here for `defaultVisibility` only. `handleWrite`
+  // does its own (idempotent) settings read + host permission check
+  // and surfaces both as `error.kind === 'config' | 'permission'` —
+  // we react to that below by opening the options page rather than
+  // re-checking here.
   const settings = await readSettings();
-  if (!settings) {
-    notify('LinkStash', 'Configure the extension first.');
-    void chrome.runtime.openOptionsPage();
+  const title =
+    info.menuItemId === MENU_ID_SAVE_PAGE && pageTitle
+      ? pageTitle
+      : fallbackTitle(url, { selection: info.selectionText });
+  const resp = await handleWrite({
+    kind: 'create',
+    input: { url, title, public: settings?.defaultVisibility === 'public' },
+  });
+  const { text, kind } = toastTextFor(resp);
+  void announce(text, kind);
+  if (resp.ok) {
+    refreshActiveBadges();
     return;
   }
-  if (!(await chrome.permissions.contains({ origins: [originPattern(settings.host)] }))) {
-    notify('LinkStash', 'Grant host permission in options first.');
+  if (resp.error.kind === 'config' || resp.error.kind === 'permission') {
     void chrome.runtime.openOptionsPage();
-    return;
-  }
-  const client = new LinkStashClient(settings.host, settings.token);
-  try {
-    const result = await client.create({
-      url,
-      title:
-        info.menuItemId === MENU_ID_SAVE_PAGE && pageTitle
-          ? pageTitle
-          : fallbackTitle(url, { selection: info.selectionText }),
-      public: settings.defaultVisibility === 'public',
-    });
-    notify(
-      result.existing ? 'Updated in LinkStash' : 'Saved to LinkStash',
-      result.bookmark.title || url,
-    );
-  } catch (e) {
-    const message = isLinkStashError(e) ? e.message : e instanceof Error ? e.message : String(e);
-    notify('LinkStash error', message);
   }
 };
 
@@ -172,13 +185,54 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   void onContextSave(info, tab);
 });
 
+// Popup → SW save channel. Routing writes through the SW means a
+// pending fetch survives the popup closing (Chrome popup JS is killed
+// the moment the popup loses focus); the SW also surfaces success or
+// failure via an injected in-page toast so the user always sees a
+// result, even after the popup is gone.
+//
+// Tab routing for the toast prefers, in order:
+//   1. `envelope.originTabId` — the popup captures its tab at send
+//      time, which is correct even if the user has switched tabs
+//      while the fetch is in flight. `sender.tab` is undefined for
+//      messages from extension pages (popup, options).
+//   2. `sender.tab?.id` — populated for content-script messages,
+//      accepted defensively.
+//   3. The currently active tab — last-resort fallback.
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (!isWriteEnvelope(msg)) return undefined;
+  const tabId = msg.originTabId ?? sender.tab?.id;
+  // The async chain below must always call sendResponse exactly once,
+  // even on rejection. Otherwise the popup awaiting sendMessage gets
+  // the runtime's "The message port closed before a response was
+  // received" error and surfaces it as a network failure to the user.
+  void handleWrite(msg.request)
+    .then((resp) => {
+      try {
+        const { text, kind } = toastTextFor(resp);
+        if (tabId != null) {
+          void showToastIn(tabId, text, kind);
+        } else {
+          void showToastInActiveTab(text, kind);
+        }
+        if (resp.ok) refreshActiveBadges();
+      } finally {
+        sendResponse(resp);
+      }
+    })
+    .catch((e: unknown) => {
+      const message = e instanceof Error ? e.message : String(e);
+      sendResponse({
+        ok: false,
+        error: { kind: 'network', status: 0, code: 'sw_handler_error', message },
+      });
+    });
+  return true;
+});
+
 chrome.runtime.onInstalled.addListener(() => {
   ensureContextMenu();
-  void chrome.tabs.query({ active: true }).then((tabs) => {
-    for (const tab of tabs) {
-      if (tab.id != null) debouncedUpdate(tab.id, tab.url);
-    }
-  });
+  refreshActiveBadges();
 });
 
 chrome.runtime.onStartup.addListener(() => {

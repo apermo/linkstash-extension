@@ -44,6 +44,22 @@ LinkStash before tagging.
 6. The `publish.yml` workflow (see below) uploads + auto-publishes
    to the Chrome Web Store.
 
+> **GitHub gotcha:** the `release` reusable workflow runs under
+> `GITHUB_TOKEN`, and GitHub's loop-prevention rule suppresses
+> downstream workflow runs for *any* event created by
+> `GITHUB_TOKEN` — including `push` events for tags it created.
+> So neither `release: [created, published]` nor
+> `push: tags: ['v*']` will fire automatically when the reusable
+> workflow tags + releases the next version. Both
+> `release-asset.yml` and `publish.yml` listen on those triggers
+> for completeness (e.g. when a human pushes a tag), but the
+> reliable path today is the `workflow_dispatch` fallback: open
+> the Actions tab → pick **Release Asset** (and then **Publish to
+> Chrome Web Store**) → **Run workflow** → enter `vX.Y.Z`. To
+> remove the manual step, change the reusable workflow to push
+> the tag using a PAT or a GitHub App token instead of
+> `GITHUB_TOKEN`.
+
 ## First-time Chrome Web Store setup
 
 The first version has to be uploaded manually because publishing

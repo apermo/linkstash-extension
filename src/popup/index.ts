@@ -1,4 +1,5 @@
 import { LinkStashClient, isLinkStashError, type Bookmark, type BookmarkInput, type Tag } from '../lib/api';
+import { sendWrite, type WriteErrorPayload, type WriteResponse } from '../lib/messages';
 import { readSettings, type Settings } from '../lib/settings';
 import { currentToken, replaceToken } from '../lib/tags';
 
@@ -24,6 +25,7 @@ const elements = {
   description: $<HTMLTextAreaElement>('#description'),
   tags: $<HTMLInputElement>('#tags'),
   isPublic: $<HTMLInputElement>('#is-public'),
+  isFavorite: $<HTMLInputElement>('#is-favorite'),
   status: $<HTMLParagraphElement>('#status'),
   save: $<HTMLButtonElement>('#save'),
   delete: $<HTMLButtonElement>('#delete'),
@@ -68,12 +70,17 @@ const requestPermission = async (host: string): Promise<boolean> =>
 const activeTab = async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.url) throw new Error('No active tab to save.');
-  return { url: tab.url, title: tab.title ?? '' };
+  return { id: tab.id, url: tab.url, title: tab.title ?? '' };
 };
 
 let mode: Mode | null = null;
 let settings: Settings | null = null;
 let client: LinkStashClient | null = null;
+// Capture the popup's tab id at open time so the SW can route the
+// confirmation toast back to the originating tab even if the user has
+// switched tabs by the time the fetch resolves. `sender.tab` on the SW
+// side is undefined for popup-originated messages.
+let originTabId: number | undefined;
 
 const renderMode = () => {
   if (!mode) return;
@@ -85,6 +92,7 @@ const renderMode = () => {
     elements.description.value = '';
     elements.tags.value = '';
     elements.isPublic.checked = settings?.defaultVisibility === 'public';
+    elements.isFavorite.checked = false;
     elements.delete.classList.add('hidden');
     elements.save.textContent = 'Save';
     setStatus('');
@@ -96,6 +104,7 @@ const renderMode = () => {
     elements.description.value = mode.bookmark.description;
     elements.tags.value = formatTags(mode.bookmark.tags);
     elements.isPublic.checked = mode.bookmark.public;
+    elements.isFavorite.checked = mode.bookmark.favorite;
     elements.delete.classList.remove('hidden');
     elements.save.textContent = 'Update';
     setStatus('');
@@ -116,6 +125,7 @@ const init = async () => {
   client = new LinkStashClient(settings.host, settings.token);
 
   const tab = await activeTab();
+  originTabId = tab.id;
   try {
     const checkResult = await client.check(tab.url);
     if (checkResult.exists && typeof checkResult.id === 'number') {
@@ -143,6 +153,14 @@ const humanize = (e: unknown): string => {
   return e instanceof Error ? e.message : String(e);
 };
 
+const humanizeWriteError = (err: WriteErrorPayload): string => {
+  if (err.kind === 'auth') return 'Token rejected — open options to reconfigure.';
+  if (err.kind === 'notFound') return 'Endpoint not found — is the LinkStash plugin active?';
+  if (err.kind === 'network') return 'Network error — check the host URL.';
+  if (err.kind === 'config' || err.kind === 'permission') return err.message;
+  return err.message;
+};
+
 const collectInput = (): BookmarkInput | null => {
   if (!mode) return null;
   const url = mode.kind === 'edit' ? mode.bookmark.url : mode.url;
@@ -152,6 +170,7 @@ const collectInput = (): BookmarkInput | null => {
     description: elements.description.value,
     tags: parseTags(elements.tags.value),
     public: elements.isPublic.checked,
+    favorite: elements.isFavorite.checked,
   };
 };
 
@@ -167,18 +186,33 @@ const onSubmit = async () => {
   elements.save.disabled = true;
   setStatus('Saving…');
   try {
+    let resp: WriteResponse;
     if (mode.kind === 'new') {
-      const result = await client.create(input);
-      mode = { kind: 'edit', bookmark: result.bookmark };
-      renderMode();
-      setStatus(result.existing ? 'Updated existing bookmark.' : 'Saved.', 'success');
+      resp = await sendWrite({ kind: 'create', input }, { originTabId });
     } else {
-      const updated = await client.update(mode.bookmark.id, input);
-      mode = { kind: 'edit', bookmark: updated };
+      resp = await sendWrite(
+        { kind: 'update', id: mode.bookmark.id, patch: input },
+        { originTabId },
+      );
+    }
+    if (!resp.ok) {
+      setStatus(humanizeWriteError(resp.error), 'error');
+      return;
+    }
+    if (resp.kind === 'create') {
+      mode = { kind: 'edit', bookmark: resp.result.bookmark };
+      renderMode();
+      setStatus(resp.result.existing ? 'Updated existing bookmark.' : 'Saved.', 'success');
+    } else if (resp.kind === 'update') {
+      mode = { kind: 'edit', bookmark: resp.bookmark };
       renderMode();
       setStatus('Updated.', 'success');
     }
   } catch (e) {
+    // `chrome.runtime.sendMessage` throws if the SW has no listener
+    // or the message port closed early. Best-effort surface inline;
+    // the SW's in-page toast path is the primary feedback channel
+    // and covers the popup-already-closed case.
     setStatus(humanize(e), 'error');
   } finally {
     elements.save.disabled = false;
@@ -195,7 +229,11 @@ const onDelete = async () => {
   elements.delete.disabled = true;
   setStatus('Deleting…');
   try {
-    await client.remove(mode.bookmark.id);
+    const resp = await sendWrite({ kind: 'delete', id: mode.bookmark.id }, { originTabId });
+    if (!resp.ok) {
+      setStatus(humanizeWriteError(resp.error), 'error');
+      return;
+    }
     const url = mode.bookmark.url;
     const title = mode.bookmark.title;
     mode = { kind: 'new', url, title };

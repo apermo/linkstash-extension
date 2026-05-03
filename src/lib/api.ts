@@ -4,8 +4,7 @@ export interface Bookmark {
   title: string;
   description: string;
   tags: string[];
-  unread: boolean;
-  archived: boolean;
+  favorite: boolean;
   public: boolean;
   created: string;
   modified: string;
@@ -16,8 +15,7 @@ export interface BookmarkInput {
   title?: string;
   description?: string;
   tags?: string[];
-  unread?: boolean;
-  archived?: boolean;
+  favorite?: boolean;
   public?: boolean;
 }
 
@@ -26,8 +24,7 @@ export interface BookmarkPatch {
   title?: string;
   description?: string;
   tags?: string[];
-  unread?: boolean;
-  archived?: boolean;
+  favorite?: boolean;
   public?: boolean;
 }
 
@@ -131,8 +128,12 @@ export class LinkStashClient {
   async testConnection(): Promise<
     { ok: true } | { ok: false; reason: 'auth' | 'notFound' | 'server' | 'network'; message: string }
   > {
+    // Hits /check (require_read_bookmarks → current_user_can('edit_posts')),
+    // which is the same capability gate POST /bookmarks uses. /tags?q=
+    // would 200 even for an anonymous request because of allow_anyone, so
+    // a broken or read-only token would falsely report "Connection ok".
     try {
-      await this.tags('');
+      await this.check('https://linkstash.invalid/connection-probe');
       return { ok: true };
     } catch (e) {
       if (isLinkStashError(e)) {
@@ -150,7 +151,17 @@ export class LinkStashClient {
     if (init.body !== undefined) headers['Content-Type'] = 'application/json';
     let res: Response;
     try {
-      res = await fetch(`${this.base}${path}`, { ...init, headers });
+      // `credentials: 'omit'` is critical. Chrome extensions with host
+      // permissions auto-attach the user's cookies to fetches, so a user
+      // who's also logged into the WP admin would send both the Bearer
+      // token *and* a `wordpress_logged_in_*` cookie. WP's
+      // `rest_cookie_check_errors` then sees cookie auth without an
+      // `X-WP-Nonce` header and forcibly demotes the request to
+      // anonymous (`wp_set_current_user(0)`) before the permission
+      // callback runs, producing a misleading 403 even though the token
+      // itself is valid. Omitting credentials keeps the bearer-token
+      // auth path clean.
+      res = await fetch(`${this.base}${path}`, { ...init, headers, credentials: 'omit' });
     } catch (e) {
       throw new LinkStashError(
         'network',
