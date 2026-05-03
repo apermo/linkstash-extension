@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-05-03
+
+### Added
+
+- Popup: Favorite checkbox next to Public. Pre-checked from the
+  saved bookmark when editing; defaults to unchecked on a fresh
+  save. The state is sent as `favorite: bool` in create / update
+  requests so the extension matches the WP-Admin star toggle.
+
 ### Changed
 
 - API types synced to LinkStash plugin v0.1.1: `unread` and
@@ -14,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `BookmarkPatch`; `favorite` added in their place. Runtime
   behaviour unchanged — the popup never read or sent the dropped
   fields — but the types no longer lie about the response shape.
+- `codecov/codecov-action` bumped from v4 to v5; the upload now
+  passes the repository slug explicitly.
 
 ### Fixed
 
@@ -28,21 +39,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `chrome.tabs.get` / `chrome.tabs.query` chains in the badge
   refresh paths now swallow rejections that happen when a tab is
   destroyed mid-flight.
-
-## [0.1.1] - 2026-05-02
-
-### Fixed
-
 - Release workflows (`release-asset.yml`, `publish.yml`) now also
   listen on tag push and `workflow_dispatch`. The reusable release
   job runs under `GITHUB_TOKEN`, which doesn't fire downstream
   workflows; this widens the trigger so the next tag self-attaches
   the build artefact and self-publishes to the Chrome Web Store.
-
-### Changed
-
-- `codecov/codecov-action` bumped from v4 to v5; the upload now
-  passes the repository slug explicitly.
 
 ## [0.1.0] - 2026-05-02
 
