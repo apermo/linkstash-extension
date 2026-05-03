@@ -186,11 +186,16 @@ main {
   font-size: 11px;
 }
 
+.checkboxes {
+  display: flex;
+  gap: 16px;
+  margin: 4px 0 12px;
+}
+
 .checkbox {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin: 4px 0 12px;
 }
 
 .actions {

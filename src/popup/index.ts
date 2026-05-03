@@ -25,6 +25,7 @@ const elements = {
   description: $<HTMLTextAreaElement>('#description'),
   tags: $<HTMLInputElement>('#tags'),
   isPublic: $<HTMLInputElement>('#is-public'),
+  isFavorite: $<HTMLInputElement>('#is-favorite'),
   status: $<HTMLParagraphElement>('#status'),
   save: $<HTMLButtonElement>('#save'),
   delete: $<HTMLButtonElement>('#delete'),
@@ -86,6 +87,7 @@ const renderMode = () => {
     elements.description.value = '';
     elements.tags.value = '';
     elements.isPublic.checked = settings?.defaultVisibility === 'public';
+    elements.isFavorite.checked = false;
     elements.delete.classList.add('hidden');
     elements.save.textContent = 'Save';
     setStatus('');
@@ -97,6 +99,7 @@ const renderMode = () => {
     elements.description.value = mode.bookmark.description;
     elements.tags.value = formatTags(mode.bookmark.tags);
     elements.isPublic.checked = mode.bookmark.public;
+    elements.isFavorite.checked = mode.bookmark.favorite;
     elements.delete.classList.remove('hidden');
     elements.save.textContent = 'Update';
     setStatus('');
@@ -161,6 +164,7 @@ const collectInput = (): BookmarkInput | null => {
     description: elements.description.value,
     tags: parseTags(elements.tags.value),
     public: elements.isPublic.checked,
+    favorite: elements.isFavorite.checked,
   };
 };
 
