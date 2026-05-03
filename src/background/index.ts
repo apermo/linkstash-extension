@@ -201,16 +201,31 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (!isWriteEnvelope(msg)) return undefined;
   const tabId = msg.originTabId ?? sender.tab?.id;
-  void handleWrite(msg.request).then((resp) => {
-    const { text, kind } = toastTextFor(resp);
-    if (tabId != null) {
-      void showToastIn(tabId, text, kind);
-    } else {
-      void showToastInActiveTab(text, kind);
-    }
-    if (resp.ok) refreshActiveBadges();
-    sendResponse(resp);
-  });
+  // The async chain below must always call sendResponse exactly once,
+  // even on rejection. Otherwise the popup awaiting sendMessage gets
+  // the runtime's "The message port closed before a response was
+  // received" error and surfaces it as a network failure to the user.
+  void handleWrite(msg.request)
+    .then((resp) => {
+      try {
+        const { text, kind } = toastTextFor(resp);
+        if (tabId != null) {
+          void showToastIn(tabId, text, kind);
+        } else {
+          void showToastInActiveTab(text, kind);
+        }
+        if (resp.ok) refreshActiveBadges();
+      } finally {
+        sendResponse(resp);
+      }
+    })
+    .catch((e: unknown) => {
+      const message = e instanceof Error ? e.message : String(e);
+      sendResponse({
+        ok: false,
+        error: { kind: 'network', status: 0, code: 'sw_handler_error', message },
+      });
+    });
   return true;
 });
 
