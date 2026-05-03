@@ -18,15 +18,21 @@ jobs:
                   node-version: '22'
                   cache: 'npm'
             - run: npm ci
-            - run: npm run build
-            - name: Package dist as zip
+            - run: npm run build:chrome
+            - run: npm run build:firefox
+            - name: Package chrome dist as zip
               run: |
                   cd dist
                   zip -r "../linkstash-extension-${{ github.event.release.tag_name }}.zip" .
-            - name: Upload asset to release
+            - name: Package firefox dist as zip
+              run: |
+                  cd dist-firefox
+                  zip -r "../linkstash-extension-firefox-${{ github.event.release.tag_name }}.zip" .
+            - name: Upload assets to release
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
                   gh release upload "${{ github.event.release.tag_name }}" \
                       "linkstash-extension-${{ github.event.release.tag_name }}.zip" \
+                      "linkstash-extension-firefox-${{ github.event.release.tag_name }}.zip" \
                       --clobber
