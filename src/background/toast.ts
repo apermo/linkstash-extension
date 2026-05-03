@@ -5,12 +5,18 @@ export type ToastKind = 'success' | 'error';
 /**
  * Renders a transient pill at the top of the page.
  *
- * Runs in the page's main world via `chrome.scripting.executeScript`,
- * so it must be self-contained: no imports, no closures over outer
- * scope, no external types at runtime. Chrome serialises the function
- * source and re-parses it inside the target tab.
+ * Runs in the target tab's *isolated* world (the default for
+ * `chrome.scripting.executeScript`). The toast only touches the DOM,
+ * so the isolated world is sufficient — and avoids exposing the
+ * function to anything the page's main-world scripts can override
+ * (`Element.prototype.appendChild`, `setTimeout`, etc.).
+ *
+ * The function still has to be self-contained because Chrome
+ * serialises the source and re-parses it inside the target: no
+ * imports, no closures over outer scope, no external types at
+ * runtime.
  */
-export const renderToast = (message: string, kind: 'success' | 'error'): void => {
+export const renderToast = (message: string, kind: ToastKind): void => {
   const ID = '__linkstash_toast__';
   document.getElementById(ID)?.remove();
 
@@ -86,10 +92,12 @@ export const toastTextFor = (resp: WriteResponse): { text: string; kind: ToastKi
 };
 
 const swallow = () => {
-  /* injection failures (chrome://, file://, no host permission) are
-     never user-visible and never fatal — the extension keeps working,
-     the user just doesn't get a confirmation toast on unsupported
-     pages. */
+  /* Injection failures (chrome://, file://, the Web Store, the PDF
+     viewer) are non-fatal — the save itself already completed. The
+     trade-off is real, though: on those pages the user gets no
+     confirmation at all. The action-icon badge ✓ still updates, but
+     anything done from the right-click menu on an unsupported page
+     finishes silently. Worth a follow-up if it bites in practice. */
 };
 
 export const showToastIn = async (
@@ -102,7 +110,7 @@ export const showToastIn = async (
       target: { tabId },
       func: renderToast,
       args: [text, kind],
-      world: 'MAIN',
+      // Default isolated world is correct here — see renderToast doc.
     });
   } catch {
     swallow();
