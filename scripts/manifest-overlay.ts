@@ -1,6 +1,6 @@
 export type Browser = 'chrome' | 'firefox';
 
-export const FIREFOX_GECKO_ID = 'linkstash@apermo.de';
+export const FIREFOX_GECKO_ID = 'linkstash-extension@apermo.github.io';
 export const FIREFOX_MIN_VERSION = '121.0';
 
 export function isBrowser(value: string | undefined): value is Browser {
